@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include <vector>
+#include <list>
 #include <string>
 
 int main(int argc, char *argv[]) {
@@ -8,7 +8,7 @@ int main(int argc, char *argv[]) {
     input.open("Day1.txt");
     
     int data;
-    std::vector<int> elvesTotalCalories;
+    std::list<int> elvesTotalCalories;
     std::string temp;
     
     if(!input.is_open()) {
@@ -17,23 +17,25 @@ int main(int argc, char *argv[]) {
     
     while(getline(input, temp)) {
         if(temp == "") {
-            elvesTotalCalories.emplace_back(data);
+            std::cout << data << std::endl;
+            elvesTotalCalories.push_back(data);
             data = 0;
         } else {
             data += atoi(temp.c_str());
         }
     }
     
-    data = 0;
+    elvesTotalCalories.sort(std::greater<int>());
     
+    std::cout << "Calorie count:" << elvesTotalCalories.front() << std::endl;
+    int count = 0;
+    int topThree = 0;
     for(auto i: elvesTotalCalories) {
-        if(i > data) {
-            data = i;
+        if(count < 3) {
+            count++;
+            topThree += i;
         }
     }
-    
-    // std::cout << "Elf number:" << index << std::endl;
-    std::cout << "Calorie count:" << data << std::endl;
-    
+    std::cout << "Top three calorie count:" << topThree << std::endl;
     return 0;
 }
