@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
+#include <algorithm>
 
 class Stack {
     public:
@@ -13,8 +15,14 @@ class Stack {
         std::vector<char> stack;
 };
 
+struct move {
+    int n;
+    int from;
+    int to;
+};
+
 std::vector<Stack*> columns;
-std::vector<std::string> moveList;
+std::vector<move> moveList;
 std::vector<std::string> stackList;
 
 void processColumn(std::string line, std::vector<Stack*> &vector) {
@@ -28,20 +36,37 @@ void processColumn(std::string line, std::vector<Stack*> &vector) {
     }
 }
 
-void processMove(std::string line) {
+std::string removeSubstr(std::string s, std::string r) {
+    std::size_t rLoc = s.find(r);
+    if(rLoc != std::string::npos) {
+        s.erase(rLoc, r.length());
+    }
+    return s;
+}
 
+void processMove(std::string line, std::vector<move> &vector) {
+    move tempMove;
+    std::cout << "processMove() : " << line << std::endl;
+    // Remove all the unnecessary text from line
+    line = removeSubstr(line, "move ");
+    line = removeSubstr(line, "from ");
+    line = removeSubstr(line, "to ");
+    std::cout << line << std::endl;
+    // Find first number in line.
+ 
 }
 
 void processLine(std::string line) {
-    // If temp contains the char 1, it can be assumed
-    // it is either a column line, or a move line.
+    // Move commands all contain the word move in them.
+    // All lines that contain move can be processed.
     if(line.find("move") != std::string::npos) {
-        std::cout << "Found a move line " << line << std::endl;
-        moveList.emplace_back(line);
+        processMove(line, moveList);
+    // All item lines contain a [ or ] can be pushed
+    // onto stackList for later processing.
     } else if(line.find('[') != std::string::npos) {
         stackList.emplace_back(line);
+    // Everything else, column line, can be processed individually.
     } else {
-        std::cout << "Found a column line " << line << std::endl;
         processColumn(line, columns);
     }
 }
@@ -61,6 +86,19 @@ int main(int argc, char *argv[]) {
             continue;
         }
         processLine(temp);
+    }
+    // After separating the lines into their respective vectors
+    // they can be processed. First is filling in the Stack from the stackList.
+    for(int i = 0; i < columns.size(); i++) {
+        std::vector<char> stackListTemp;
+        for(int j = 0; j < stackList.size(); j++) {
+            stackListTemp.emplace_back(stackList[j][1 + (i*4)]);
+        }
+        for(auto j: stackListTemp) {
+            std::cout << j;
+        }
+        std::cout << std::endl;
+        stackListTemp.resize(0);
     }
     std::cout << "columns.size() = " << columns.size() << std::endl; 
     std::cout << "stackList.size() = " << stackList.size() << std::endl;
