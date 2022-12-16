@@ -8,8 +8,25 @@ class Stack {
     public:
         explicit Stack() {
         }
-        void addItem(std::vector<char> item) {
+        void addItem(std::vector<char> &item) {
             stack.insert(stack.begin(), item.begin(), item.end());
+        }
+        std::vector<char> removeItem(int n) {
+            std::cout << "Remove " << n << " items" << std::endl;
+            std::vector<char> tempVec;
+            for(int i = 0; i < n; i++) {
+                tempVec.emplace_back(stack[0]);
+                stack.erase(stack.begin());
+            }
+            std::cout << "stack.size() = " << stack.size() << std::endl;
+            std::cout << "tempVec.size() = " << tempVec.size() << std::endl;
+            std::cout << "Section grabbed: ";
+            for(auto j: tempVec) {
+                std::cout << j;
+            }
+            std::cout << std::endl;
+            tempVec.resize(0);
+            std::cout << "End" << std::endl;
         }
     private:
         std::vector<char> stack;
@@ -53,7 +70,6 @@ void processMove(std::string line, std::vector<move> &vector) {
     line = removeSubstr(line, "to ");
     std::cout << line << std::endl;
     // Find first number in line.
- 
 }
 
 void processLine(std::string line) {
@@ -92,14 +108,20 @@ int main(int argc, char *argv[]) {
     for(int i = 0; i < columns.size(); i++) {
         std::vector<char> stackListTemp;
         for(int j = 0; j < stackList.size(); j++) {
-            stackListTemp.emplace_back(stackList[j][1 + (i*4)]);
+            char l = stackList[j][1 + (i*4)];
+            std::cout << "Char: " << l << std::endl;
+            if(l != ' ') {
+                stackListTemp.emplace_back(l);    
+            }
         }
+        columns[i]->addItem(stackListTemp);
         for(auto j: stackListTemp) {
             std::cout << j;
         }
         std::cout << std::endl;
         stackListTemp.resize(0);
     }
+    std::vector<char> t = columns[0]->removeItem(1);
     std::cout << "columns.size() = " << columns.size() << std::endl; 
     std::cout << "stackList.size() = " << stackList.size() << std::endl;
     std::cout << "moveList.size() = " << moveList.size() << std::endl;
