@@ -47,6 +47,7 @@ struct move {
 std::vector<Stack*> columns;
 std::vector<move> moveList;
 std::vector<std::string> stackList;
+bool is9000 = true;
 
 void processColumn(const std::string &line, std::vector<Stack*> &vector) {
     // Process the line and create a Stack element
@@ -109,11 +110,35 @@ void processLine(const std::string &line) {
 void run() {
     for(auto i: moveList) {
         std::vector<char> c = columns[i.from - 1]->removeItem(i.n);
-        columns[i.to - 1]->addItem(c, true);
+        if(is9000) {
+            columns[i.to - 1]->addItem(c, true);
+        } else {
+            columns[i.to - 1]->addItem(c);
+        }
     }
 }
 
+void listCranes() {
+    std::cout << "Available cranes:" << std::endl;
+    std::cout << "\t - 9000 (CrateMover 9000)" << std::endl;
+    std::cout << "\t - 9001 (CrateMover 9001)" << std::endl; 
+}
+
 int main(int argc, char *argv[]) {
+    if(argc == 1) {
+        std::cout << "No crane version was given. Cannot run without a crane input." << std::endl;
+        listCranes();
+        return 0;
+    } else if(argc >= 2) {
+        if(std::atoi(argv[1]) != 9000 && std::atoi(argv[1]) != 9001) {
+            std::cout << "This crane option is invalid. Please try again using one of the valid cranes." << std::endl;
+            listCranes();
+            return -1;
+        }
+        if(std::atoi(argv[1]) == 9001) {
+            is9000 = false;
+        }
+    }
     std::ifstream file;
     file.open("Day5.txt");
 
@@ -150,6 +175,6 @@ int main(int argc, char *argv[]) {
         std::cout << (char) i->finalItem();
     }
     std::cout << std::endl;
-
+    
     return 0;
 }

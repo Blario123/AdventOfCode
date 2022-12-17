@@ -2,3 +2,6 @@
 */*.cmake
 */CMakeCache.txt
 */Makefile
+*/.idea/
+.idea/
+*/*.old
