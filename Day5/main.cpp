@@ -6,27 +6,29 @@
 
 class Stack {
     public:
-        explicit Stack() {
-        }
-        void addItem(std::vector<char> &item) {
+        explicit Stack() = default;
+        void addItem(std::vector<char> &item, bool isMove = false) {
+            if(isMove) {
+                std::reverse(item.begin(), item.end());
+            }
             stack.insert(stack.begin(), item.begin(), item.end());
         }
         std::vector<char> removeItem(int n) {
-            std::cout << "Remove " << n << " items" << std::endl;
             std::vector<char> tempVec;
             for(int i = 0; i < n; i++) {
                 tempVec.emplace_back(stack[0]);
                 stack.erase(stack.begin());
             }
-            std::cout << "stack.size() = " << stack.size() << std::endl;
-            std::cout << "tempVec.size() = " << tempVec.size() << std::endl;
-            std::cout << "Section grabbed: ";
-            for(auto j: tempVec) {
-                std::cout << j;
+            return tempVec;
+        }
+        friend std::ostream& operator<<(std::ostream &stream, const Stack &s) {
+            for(auto i: s.stack) {
+                stream << i;
             }
-            std::cout << std::endl;
-            tempVec.resize(0);
-            std::cout << "End" << std::endl;
+            return stream;
+        }
+        char finalItem() {
+            return stack[0];
         }
     private:
         std::vector<char> stack;
@@ -36,24 +38,28 @@ struct move {
     int n;
     int from;
     int to;
+    friend std::ostream& operator<<(std::ostream &stream, const move &m) {
+        stream << "Move " << m.n << " From " << m.from << " To " << m.to;
+        return stream;
+    }
 };
 
 std::vector<Stack*> columns;
 std::vector<move> moveList;
 std::vector<std::string> stackList;
 
-void processColumn(std::string line, std::vector<Stack*> &vector) {
+void processColumn(const std::string &line, std::vector<Stack*> &vector) {
     // Process the line and create a Stack element
     // for every digit.
     for(auto i: line) {
         if(i != ' ') {
-            Stack *stack = new Stack;
+            auto *stack = new Stack;
             vector.emplace_back(stack);
         }
     }
 }
 
-std::string removeSubstr(std::string s, std::string r) {
+std::string removeSubstr(std::string s, const std::string &r) {
     std::size_t rLoc = s.find(r);
     if(rLoc != std::string::npos) {
         s.erase(rLoc, r.length());
@@ -61,18 +67,31 @@ std::string removeSubstr(std::string s, std::string r) {
     return s;
 }
 
+int findDigit(std::string &line, const char &c) {
+    int digit;
+    std::size_t loc = line.find_first_of(c);
+    if(loc != std::string::npos) {
+        digit = std::stoi(line.substr(0, loc));
+        line.erase(0, loc + 1);
+    }
+    return digit;
+}
+
 void processMove(std::string line, std::vector<move> &vector) {
-    move tempMove;
-    std::cout << "processMove() : " << line << std::endl;
+    move tempMove{};
     // Remove all the unnecessary text from line
     line = removeSubstr(line, "move ");
     line = removeSubstr(line, "from ");
     line = removeSubstr(line, "to ");
-    std::cout << line << std::endl;
     // Find first number in line.
+    tempMove.n =  findDigit(line, ' ');
+    tempMove.from = findDigit(line, ' ');
+    line.append(" ");
+    tempMove.to = findDigit(line, ' ');
+    moveList.emplace_back(tempMove);
 }
 
-void processLine(std::string line) {
+void processLine(const std::string &line) {
     // Move commands all contain the word move in them.
     // All lines that contain move can be processed.
     if(line.find("move") != std::string::npos) {
@@ -87,6 +106,13 @@ void processLine(std::string line) {
     }
 }
 
+void run() {
+    for(auto i: moveList) {
+        std::vector<char> c = columns[i.from - 1]->removeItem(i.n);
+        columns[i.to - 1]->addItem(c, true);
+    }
+}
+
 int main(int argc, char *argv[]) {
     std::ifstream file;
     file.open("Day5.txt");
@@ -97,7 +123,7 @@ int main(int argc, char *argv[]) {
     std::string temp;
     bool isColumnRow = false;
     while(getline(file, temp)) {
-        if(temp == "") {
+        if(temp.empty()) {
             // If string is empty, skip.
             continue;
         }
@@ -109,21 +135,21 @@ int main(int argc, char *argv[]) {
         std::vector<char> stackListTemp;
         for(int j = 0; j < stackList.size(); j++) {
             char l = stackList[j][1 + (i*4)];
-            std::cout << "Char: " << l << std::endl;
             if(l != ' ') {
                 stackListTemp.emplace_back(l);    
             }
         }
         columns[i]->addItem(stackListTemp);
-        for(auto j: stackListTemp) {
-            std::cout << j;
-        }
-        std::cout << std::endl;
         stackListTemp.resize(0);
     }
-    std::vector<char> t = columns[0]->removeItem(1);
-    std::cout << "columns.size() = " << columns.size() << std::endl; 
-    std::cout << "stackList.size() = " << stackList.size() << std::endl;
-    std::cout << "moveList.size() = " << moveList.size() << std::endl;
+
+    run();
+
+    std::cout << "Final output: ";
+    for(auto i: columns) {
+        std::cout << (char) i->finalItem();
+    }
+    std::cout << std::endl;
+
     return 0;
 }
