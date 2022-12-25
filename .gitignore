@@ -1,7 +1,11 @@
 */CMakeFiles/
+CMakeFiles/
 */*.cmake
+*.cmake
 */CMakeCache.txt
+CMakeCache.txt
 */Makefile
+Makefile
 */.idea/
 .idea/
 */*.old
