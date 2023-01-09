@@ -14,18 +14,18 @@ struct file {
 
 struct dir {
     std::string name;
-    dir *parent = nullptr;
-    unsigned long size = 0;
-    unsigned long hash;
     int fileLine = 0;
+    std::vector<dir*> dirs;
     std::vector<file> files;
-    std::vector<dir> subDirs;
 };
 
 file createFile(const std::string &s) {
     file tempFile;
     unsigned long spacePos = s.find_first_of(' ');
+    // Only allow lines not containing "dir", otherwise, set the size
+    // to -1 to be detected as not a file
     if(s.find("dir") == std::string::npos) {
+        // Extract the size and name from s by using the calculated space position
         tempFile.size = (unsigned long) std::stoi(s.substr(0, spacePos++));
         tempFile.name = s.substr(spacePos, s.size() - spacePos);
     } else {
@@ -34,20 +34,39 @@ file createFile(const std::string &s) {
     return tempFile;
 }
 
+// The vector of all directories, to allow each
+// element to reference other elements as children
 std::vector<dir> directories;
 
 void createTree(const std::vector<std::string> &list) {
     // Find the location in list of where the cd commands are.
     // This can be used for parent references later.
-    std::vector<int> dirLocations;
+    std::vector<int> dirLocations, parentLocation, depthLocation;
     for(int i = 0; i < list.size(); i++) {
-        if(list[i].find("$ cd") != std::string::npos && list[i].find("..") == std::string::npos) {
-            dirLocations.emplace_back(i);
+        // Skip over non "$ cd" commands
+        if(list[i].find("$ cd") == std::string::npos) {
+            continue;
         }
+        // Skip over ".." commands, but remove the last entry to depthLocation
+        if(list[i].find("..") != std::string::npos) {
+            depthLocation.pop_back();
+            continue;
+        }
+        // Ignore the first entry due to it not having a parent
+        // Add the line number to parentLocation
+        if(i != 0) {
+            parentLocation.push_back(depthLocation.back());
+        }
+        // Add the line number of the "$ cd ___" command to dirLocations;
+        dirLocations.push_back(i);
+        // Add the previous working directory to depthLocation
+        depthLocation.push_back(i);
     }
     // Construct the files from the previous locations.
     for(auto i: dirLocations) {
         dir newDir;
+        // Extract the name of the dir from the dirLocation by
+        // removing the first 5 characters "$ cd "
         std::string name = list[i].substr(5, list[i].size() - 5);
         newDir.name = name;
         newDir.fileLine = i;
@@ -60,31 +79,44 @@ void createTree(const std::vector<std::string> &list) {
         }
         directories.emplace_back(newDir);
     }
-    // Calculate the hash of the directory,
-    // The hash also needs the size of the directory.
+    // Allocate parent pointer from directories
     for(int i = 0; i < directories.size(); i++) {
-        // Size calculation
-        unsigned long sizeTotal = 0;
-        for(const auto& j: directories[i].files) {
-            sizeTotal += j.size;
+        for(int j = 0; j < parentLocation.size(); j++) {
+            if(directories[i].fileLine == parentLocation[j]) {
+                directories[i].dirs.push_back(&directories[j + 1]);
+            }
         }
-        directories[i].size = sizeTotal;
-        // Hash calculation
-        std::size_t nameHash = std::hash<std::string>{}(directories[i].name);
-        std::size_t sizeHash = std::hash<unsigned long>{}(directories[i].size);
-        directories[i].hash = std::hash<std::size_t>{}(nameHash & (sizeHash) ^ (i << 1));
     }
 }
 
+unsigned long calculateSize(const dir &d) {
+    unsigned long tempSize = 0;
+    // Calculate the size of the files in the dir
+    for(const auto& i: d.files) {
+        tempSize += i.size;
+    }
+    // Calculate the size of the subdirs recursively in the dir
+    for(auto i: d.dirs) {
+        tempSize += calculateSize(*i);
+    }
+    return tempSize;
+}
+
 int main(int argc, char *argv[]) {
-#if 0
+    // Template for adding command line options
+#if 0 // UNUSED
     if(argc > 1) {
-        markerLength = std::atoi(argv[1]);
+
     } else {
-        std::cout << "Usage: " << argv[0] << " [Length of marker]" << std::endl;
+        std::cout << "Usage: " << argv[0] << "" << std::endl;
         return 0;
     }
+#else
+    // Cast argc and argv to void to remove warnings for unused variables
+    (void) argc; // UNUSED
+    (void) argv; // UNUSED
 #endif
+    // Load file and process the lines
     input.open("Day7.txt");
 
     if(!input.is_open()) {
@@ -95,14 +127,17 @@ int main(int argc, char *argv[]) {
     while(getline(input, temp)) {
         inputList.emplace_back(temp);
     }
-
+    // Generate the directory tree/list to be processed
     createTree(inputList);
 
+    // Add the size of a directory if the size is less than 100000
     unsigned long total = 0;
-
+    for(const auto& i: directories) {
+        unsigned long s = calculateSize(i);
+        if(s <= 100000) {
+            total += s;
+        }
+    }
     std::cout << std::endl << "Total = " << total << std::endl;
     return 0;
 }
-
-// Is not higher than 1869999
-// Is not lower than 1069572
