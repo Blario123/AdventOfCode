@@ -3,6 +3,7 @@
 #include <vector>
 
 std::ifstream input;
+unsigned long fileSystemSize = 70000000;
 
 struct file;
 struct dir;
@@ -102,23 +103,32 @@ unsigned long calculateSize(const dir &d) {
     return tempSize;
 }
 
-int main(int argc, char *argv[]) {
-    // Template for adding command line options
-#if 0 // UNUSED
-    if(argc > 1) {
+int sizeLimit;
 
+unsigned long totalSize() {
+    // Add the size of a directory if the size is less than 100000
+    unsigned long total = 0;
+    if(sizeLimit < 0) {
+        return calculateSize(directories[0]);
+    }
+    for(const auto& i: directories) {
+        unsigned long s = calculateSize(i);
+        if(s <= sizeLimit) {
+            total += s;
+        }
+    }
+    return total;
+}
+
+int main(int argc, char *argv[]) {
+    if(argc > 1) {
+        sizeLimit = atoi(argv[1]);
     } else {
-        std::cout << "Usage: " << argv[0] << "" << std::endl;
+        std::cout << "Usage: " << argv[0] << " [Filesize limit] (-1 for no size limit)" << std::endl;
         return 0;
     }
-#else
-    // Cast argc and argv to void to remove warnings for unused variables
-    (void) argc; // UNUSED
-    (void) argv; // UNUSED
-#endif
     // Load file and process the lines
     input.open("Day7.txt");
-
     if(!input.is_open()) {
         return -1;
     }
@@ -129,15 +139,30 @@ int main(int argc, char *argv[]) {
     }
     // Generate the directory tree/list to be processed
     createTree(inputList);
-
-    // Add the size of a directory if the size is less than 100000
-    unsigned long total = 0;
-    for(const auto& i: directories) {
-        unsigned long s = calculateSize(i);
-        if(s <= 100000) {
-            total += s;
+    // Calculate the total size, using no limit if sizeLimit = -1
+    // Or with the limit set by sizeLimit
+    unsigned long spaceUsed = totalSize();
+    std::cout << "Total space used = " << spaceUsed << std::endl;
+        // The program does not need to continue for part 1
+    if(sizeLimit > 0) {
+        return 0;
+    }
+    // Calculate the required space to be freed
+    unsigned long requiredSpace = 30000000 - fileSystemSize - spaceUsed;
+    std::cout << "Space required to obtain minimum req'd = " << requiredSpace << std::endl;
+    // Create a pointer to be reallocated if a new candidate exists
+    dir* closestDir = nullptr;
+    for(auto &i: directories) {
+        // Calculate the size of the current dir
+        unsigned long dirSize = calculateSize(i);
+        // If the dir size is greater than the required, and no parent exists
+        // The dir can be pointed to by closestDir
+        // If a parent exists, and the current dir is smaller than closestDir
+        // closestDir can be reallocated to the new dir.
+        if(dirSize >= requiredSpace && ((closestDir == nullptr) || dirSize <= calculateSize(*closestDir))) {
+            closestDir = &i;
         }
     }
-    std::cout << std::endl << "Total = " << total << std::endl;
+    std::cout << "Closest dir = " << closestDir->name << " with size of " << calculateSize(*closestDir) << std::endl;
     return 0;
 }
