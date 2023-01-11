@@ -16,47 +16,43 @@ void createRow(const std::string &s) {
 
 bool checkLine(const std::vector<int> &v, int pos) {
     // Return true for hidden, false for visible
-    bool isHidden = true;
-    // If the position of the tree is surrounded by equal or taller trees
-    // Return isHidden immediately
-    if((v[pos - 1] >= v[pos]) && (v[pos + 1] >= v[pos])) {
+    bool isHidden = false;
+    // Check left of position
+    for(int i = 0; i < pos; i++) {
+        if(v[i] >= v[pos]) {
+            isHidden = true;
+            break;
+        }
+    }
+    // If the tree is already visible from the left of the tree position
+    // Return isHidden
+    if(!isHidden) {
         return isHidden;
     }
-    for(int i = 0; i < pos; i++) {
-        if(v[pos] > v[i]) {
-            isHidden = false;
-        } else {
-            isHidden = true;
+    // If the tree is still hidden, carry on processing right of the tree position
+    for(int i = pos + 1; i < v.size(); i++) {
+        // If any tree is taller or the same, return true;
+        if(v[i] >= v[pos]) {
+            return true;
         }
     }
-    if(isHidden) {
-        if(v[pos + 1] < v[pos]) {
-            for(int i = ++pos; i < v.size(); i++) {
-                if(v[pos] > v[i]) {
-                    isHidden = false;
-                } else {
-                    isHidden = true;
-                }
-            }
-        }
-    }
-    std::cout << ((isHidden) ? "Hidden" : "Visible") << std::endl;
-    return isHidden;
 }
 
-bool verifyTree(int tree, int y, int x) {
-    std::cout << "Checking tree [" << x << "," << y << "] of value " << tree << std::endl;
+bool verifyTree(int y, int x) {
     // Create temporary vectors to be processed to check for height differences
     std::vector<int> vertical, horizontal;
+    // Create a vector if the row using the current element of vector
     horizontal = vector[y];
+    // Create a vert. vector using all the elements at position x through vectors elements
     for(auto i : vector) {
         vertical.push_back(i[x]);
     }
+    // If visible verically, return false
     if(!checkLine(vertical, y)) {
-        return false; // If visible verically, return false
-    } else {
-        return checkLine(horizontal, x); // If visible, returns true, else returns false
+        return false;
     }
+    // If visible, returns true, else returns false
+    return checkLine(horizontal, x);
 }
 
 int main(int argc, char *argv[]) {
@@ -88,11 +84,10 @@ int main(int argc, char *argv[]) {
     // Check all the inner trees
     for(int i = 1; i < vector.size() - 1; i++) {
         for(int j = 1; j < vector[i].size() - 1; j++) {
-            if(verifyTree(vector[i][j], i, j)) {
+            if(!verifyTree(i, j)) {
                 visible++;
             }
         }
-        std::cout << std::endl;
     }
     std::cout << "Total visible trees = " << visible << std::endl;
     return 0;
