@@ -31,7 +31,6 @@ bool isVisited(const Pos &p) {
     if(std::any_of(visitedPos.cbegin(), visitedPos.cend(), [&p](Pos i){
         return (i.x == p.x && i.y == p.y);
     })) {
-        std::cout << "Already visited " << p.x << "," << p.y << std::endl;
         alreadyVisited = true;
     }
     return alreadyVisited;
@@ -41,22 +40,56 @@ struct Rope {
     Pos head;
     Pos tail;
     void move(const Direction &d, int c) {
-        switch(d) {
-            case Up:
-                head.y += c;
-                break;
-            case Down:
-                head.y -= c;
-                break;
-            case Left:
-                head.x -= c;
-                break;
-            case Right:
-                head.x += c;
-                break;
-        }
-        if(!isVisited(tail)) {
-            visitedPos.push_back(tail);
+        for(int i = 0; i < c; i++) {
+            switch(d) {
+                case Up:
+                    head.y++;
+                    break;
+                case Down:
+                    head.y--;
+                    break;
+                case Left:
+                    head.x--;
+                    break;
+                case Right:
+                    head.x++;
+                    break;
+            }
+            int deltaX = head.x - tail.x;
+            int deltaY = head.y - tail.y;
+            if(abs(deltaX) > 1) {
+                if(deltaY != 0) {
+                    if(deltaY < 0) {
+                        tail.y--;
+                    } else {
+                        tail.y++;
+                    }
+                }
+                // Correct for the sign of deltaX
+                if(deltaX < 0) {
+                    tail.x--;
+                } else {
+                    tail.x++;
+                }
+            }
+            if(abs(deltaY) > 1) {
+                if(deltaX != 0) {
+                    if(deltaX < 0) {
+                        tail.x--;
+                    } else {
+                        tail.x++;
+                    }
+                }
+                // Correct for the sign of deltaY
+                if(deltaY < 0) {
+                    tail.y--;
+                } else {
+                    tail.y++;
+                }
+            }
+            if(!isVisited(tail)) {
+                visitedPos.push_back(tail);
+            }
         }
     }
 };
@@ -84,11 +117,9 @@ void processMove(const std::string &s) {
 
 Rope rope;
 
-int run() {
+unsigned long run() {
     for(auto i: moves) {
         rope.move(i.direction, i.count);
-        std::cout << "Head: " << rope.head.x << "," << rope.head.y;
-        std::cout << " Tail: " << rope.tail.x << "," << rope.tail.y << std::endl;
     }
     return visitedPos.size();
 }
