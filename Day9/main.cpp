@@ -14,6 +14,8 @@ enum Direction {
     Right
 };
 
+std::vector<std::string> directionNames = {"Up", "Down", "Left", "Right"};
+
 struct Move {
     Direction direction;
     int count;
@@ -24,11 +26,12 @@ struct Pos {
     int y = 0;
 };
 
-std::vector<Pos> visitedPos;
+std::vector<Pos> visitedPosPt1;
+std::vector<Pos> visitedPosPt2;
 
-bool isVisited(const Pos &p) {
+bool isVisited(const Pos &p, std::vector<Pos> &v) {
     bool alreadyVisited = false;
-    if(std::any_of(visitedPos.cbegin(), visitedPos.cend(), [&p](Pos i){
+    if(std::any_of(v.cbegin(), v.cend(), [&p](Pos i){
         return (i.x == p.x && i.y == p.y);
     })) {
         alreadyVisited = true;
@@ -38,9 +41,13 @@ bool isVisited(const Pos &p) {
 
 struct Rope {
     Pos head;
-    Pos tail;
+    // Create tail vector of 9 elements for the 10 element rope
+    std::vector<Pos> tail = std::vector<Pos>(9);
+
     void move(const Direction &d, int c) {
+        std::cout << "Move " << directionNames[d] << " by " << c << std::endl;
         for(int i = 0; i < c; i++) {
+            std::cout << "Move: " << i << std::endl;
             switch(d) {
                 case Up:
                     head.y++;
@@ -55,42 +62,58 @@ struct Rope {
                     head.x++;
                     break;
             }
-            int deltaX = head.x - tail.x;
-            int deltaY = head.y - tail.y;
-            if(abs(deltaX) > 1) {
-                if(deltaY != 0) {
-                    if(deltaY < 0) {
-                        tail.y--;
-                    } else {
-                        tail.y++;
-                    }
-                }
-                // Correct for the sign of deltaX
-                if(deltaX < 0) {
-                    tail.x--;
+            std::cout << "head pos = " << head.x << "," << head.y << std::endl;
+            for(int j = 0; j < tail.size(); j++) {
+                int deltaX, deltaY;
+                if(j == 0) {
+                    deltaX = head.x - tail[j].x;
+                    deltaY = head.y - tail[j].y;
                 } else {
-                    tail.x++;
+                    deltaX = tail[j - 1].x - tail[j].x;
+                    deltaY = tail[j - 1].y - tail[j].y;
                 }
-            }
-            if(abs(deltaY) > 1) {
-                if(deltaX != 0) {
+//                std::cout << "deltaX = " << deltaX << " deltaY = " << deltaY << std::endl;
+                if(abs(deltaX) > 1) {
+                    if(deltaY != 0) {
+                        if(deltaY < 0) {
+                            tail[j].y--;
+                        } else {
+                            tail[j].y++;
+                        }
+                    }
+                    // Correct for the sign of deltaX
                     if(deltaX < 0) {
-                        tail.x--;
+                        tail[j].x--;
                     } else {
-                        tail.x++;
+                        tail[j].x++;
                     }
                 }
-                // Correct for the sign of deltaY
-                if(deltaY < 0) {
-                    tail.y--;
-                } else {
-                    tail.y++;
+                if(abs(deltaY) > 1) {
+                    if(deltaX != 0) {
+                        if(deltaX < 0) {
+                            tail[j].x--;
+                        } else {
+                            tail[j].x++;
+                        }
+                    }
+                    // Correct for the sign of deltaY
+                    if(deltaY < 0) {
+                        tail[j].y--;
+                    } else {
+                        tail[j].y++;
+                    }
+                }
+                std::cout << "tail[" << j << "] pos = " << tail[j].x << "," << tail[j].y << std::endl;
+                if(!isVisited(tail[0], visitedPosPt1)) {
+                    visitedPosPt1.push_back(tail[0]);
+                }
+                if(!isVisited(tail[8], visitedPosPt2)) {
+                    visitedPosPt2.push_back(tail[8]);
                 }
             }
-            if(!isVisited(tail)) {
-                visitedPos.push_back(tail);
-            }
+            std::cout << std::endl;
         }
+        std::cout << std::endl;
     }
 };
 
@@ -117,11 +140,10 @@ void processMove(const std::string &s) {
 
 Rope rope;
 
-unsigned long run() {
+void run() {
     for(auto i: moves) {
         rope.move(i.direction, i.count);
     }
-    return visitedPos.size();
 }
 
 int main(int argc, char *argv[]) {
@@ -146,6 +168,10 @@ int main(int argc, char *argv[]) {
     while(getline(input, temp)) {
         processMove(temp);
     }
-    std::cout << "Move count = " << run() << std::endl;
+    run();
+    std::cout << "Move count of tail[0] = " << visitedPosPt1.size()  << std::endl;
+    std::cout << "Move count of tail[8] = " << visitedPosPt2.size()  << std::endl;
     return 0;
 }
+
+// less than 102456
