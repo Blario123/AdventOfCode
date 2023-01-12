@@ -14,8 +14,6 @@ enum Direction {
     Right
 };
 
-std::vector<std::string> directionNames = {"Up", "Down", "Left", "Right"};
-
 struct Move {
     Direction direction;
     int count;
@@ -30,96 +28,79 @@ std::vector<Pos> visitedPosPt1;
 std::vector<Pos> visitedPosPt2;
 
 bool isVisited(const Pos &p, std::vector<Pos> &v) {
-    bool alreadyVisited = false;
+    // Checks if a position exists in a vector
+    // If both p.x and p.y exist as an element in v, return true
     if(std::any_of(v.cbegin(), v.cend(), [&p](Pos i){
         return (i.x == p.x && i.y == p.y);
     })) {
-        alreadyVisited = true;
+        return true;
     }
-    return alreadyVisited;
+    return false;
 }
 
 struct Rope {
-    Pos head;
     // Create tail vector of 9 elements for the 10 element rope
-    std::vector<Pos> tail = std::vector<Pos>(9);
-
-    void move(const Direction &d, int c) {
-        std::cout << "Move " << directionNames[d] << " by " << c << std::endl;
-        for(int i = 0; i < c; i++) {
-            std::cout << "Move: " << i << std::endl;
-            switch(d) {
+    std::vector<Pos> ropeVec = std::vector<Pos>(10);
+    void processMove(int &dx, int &dy, int pos) {
+        // If the delta of X/Y is greater than 1, the tail[pos] must move
+        if(abs(dx) > 1) {
+            ropeVec[pos].x += dx/abs(dx);
+            // If there is an offset in the opposite axis, (in/de)crease
+            // the opposite axes according to the sign of said axis.
+            if(abs(dy) > 0) {
+                ropeVec[pos].y += dy/abs(dy);
+            }
+            return;
+        }
+        // If the delta of X/Y is greater than 1, the tail[pos] must move
+        if(abs(dy) > 1) {
+            ropeVec[pos].y += dy/abs(dy);
+            // If there is an offset in the opposite axis, (in/de)crease
+            // the opposite axes according to the sign of said axis.
+            if(abs(dx) > 0) {
+                ropeVec[pos].x += dx/abs(dx);
+            }
+            return;
+        }
+    }
+    void move(const Move &m) {
+        for(int i = 0; i < m.count; i++) {
+            // Always increase the head, ropeVec[0], by the direction dictated by the move
+            switch(m.direction) {
                 case Up:
-                    head.y++;
+                    ropeVec[0].y++;
                     break;
                 case Down:
-                    head.y--;
+                    ropeVec[0].y--;
                     break;
                 case Left:
-                    head.x--;
+                    ropeVec[0].x--;
                     break;
                 case Right:
-                    head.x++;
+                    ropeVec[0].x++;
                     break;
             }
-            std::cout << "head pos = " << head.x << "," << head.y << std::endl;
-            for(int j = 0; j < tail.size(); j++) {
-                int deltaX, deltaY;
-                if(j == 0) {
-                    deltaX = head.x - tail[j].x;
-                    deltaY = head.y - tail[j].y;
-                } else {
-                    deltaX = tail[j - 1].x - tail[j].x;
-                    deltaY = tail[j - 1].y - tail[j].y;
-                }
-//                std::cout << "deltaX = " << deltaX << " deltaY = " << deltaY << std::endl;
-                if(abs(deltaX) > 1) {
-                    if(deltaY != 0) {
-                        if(deltaY < 0) {
-                            tail[j].y--;
-                        } else {
-                            tail[j].y++;
-                        }
-                    }
-                    // Correct for the sign of deltaX
-                    if(deltaX < 0) {
-                        tail[j].x--;
-                    } else {
-                        tail[j].x++;
-                    }
-                }
-                if(abs(deltaY) > 1) {
-                    if(deltaX != 0) {
-                        if(deltaX < 0) {
-                            tail[j].x--;
-                        } else {
-                            tail[j].x++;
-                        }
-                    }
-                    // Correct for the sign of deltaY
-                    if(deltaY < 0) {
-                        tail[j].y--;
-                    } else {
-                        tail[j].y++;
-                    }
-                }
-                std::cout << "tail[" << j << "] pos = " << tail[j].x << "," << tail[j].y << std::endl;
-                if(!isVisited(tail[0], visitedPosPt1)) {
-                    visitedPosPt1.push_back(tail[0]);
-                }
-                if(!isVisited(tail[8], visitedPosPt2)) {
-                    visitedPosPt2.push_back(tail[8]);
-                }
+            // Iterate through all the tail elements ropeVec[1:9]
+            // And move them using processMove
+            for(int j = 1; j < ropeVec.size(); j++) {
+                int deltaX = ropeVec[j - 1].x - ropeVec[j].x;
+                int deltaY = ropeVec[j - 1].y - ropeVec[j].y;
+                processMove(deltaX, deltaY, j);
             }
-            std::cout << std::endl;
+            // Process the position for Part 1 and Part 2
+            // If the element already exists, don't add it to the vector
+            if(!isVisited(ropeVec[1], visitedPosPt1)) {
+                visitedPosPt1.push_back(ropeVec[1]);
+            }
+            if(!isVisited(ropeVec[9], visitedPosPt2)) {
+                visitedPosPt2.push_back(ropeVec[9]);
+            }
         }
-        std::cout << std::endl;
     }
 };
 
-std::vector<Move> moves;
-
 Direction processDirection(const std::string &s) {
+    // Convert the string direction into the corresponding enum value
     if(s == "U") {
         return Up;
     } else if(s == "D") {
@@ -131,19 +112,13 @@ Direction processDirection(const std::string &s) {
     }
 }
 
-void processMove(const std::string &s) {
+Move processMove(const std::string &s) {
+    // From the line given, extract the direction character
+    // And the number of spaces to move
     Move tempMove{};
     tempMove.direction = processDirection(s.substr(0, 1));
     tempMove.count = std::stoi(s.substr(2, s.size() - 2));
-    moves.push_back(tempMove);
-}
-
-Rope rope;
-
-void run() {
-    for(auto i: moves) {
-        rope.move(i.direction, i.count);
-    }
+    return tempMove;
 }
 
 int main(int argc, char *argv[]) {
@@ -164,13 +139,13 @@ int main(int argc, char *argv[]) {
     if(!input.is_open()) {
         return -1;
     }
+    Rope rope;
     std::string temp;
     while(getline(input, temp)) {
-        processMove(temp);
+        rope.move(processMove(temp));
     }
-    run();
-    std::cout << "Move count of tail[0] = " << visitedPosPt1.size()  << std::endl;
-    std::cout << "Move count of tail[8] = " << visitedPosPt2.size()  << std::endl;
+    std::cout << "Move count of tail[1] = " << visitedPosPt1.size()  << std::endl;
+    std::cout << "Move count of tail[9] = " << visitedPosPt2.size()  << std::endl;
     return 0;
 }
 
