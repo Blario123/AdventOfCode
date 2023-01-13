@@ -1,27 +1,45 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 std::ifstream input;
 bool signalFrame = false;
-int signalInt = 0;
-int X = 1;
+int signalInt, X = 1;
+std::vector<std::string> lines(6);
 
-void checkSignalFrame(int &c, int &x) {
-    if((c % 20) == 0 && (c % 40) != 0) {
-        signalFrame = true;
-        signalInt = x;
+void drawSprite(int &c) {
+    char toAdd;
+    for(int i = X; i <= X + 2; i++) {
+        int relPos = c % 40;
+        if(relPos == 0) {
+            relPos = 40;
+        }
+        if(i == relPos) {
+            toAdd = '#';
+            break;
+        } else {
+            toAdd = '.';
+        }
     }
+    lines[(c - 1) / 40].push_back(toAdd);
 }
 
+void checkSignalFrame(int &c) {
+    if((c % 20) == 0 && (c % 40) != 0) {
+        signalFrame = true;
+        signalInt = X;
+    }
+    drawSprite(c);
+}
 
 void processCommand(const std::string &s, int &c) {
     if(s.substr(0, 4) == "noop") {
         c++;
-        checkSignalFrame(c, X);
+        checkSignalFrame(c);
     } else {
         for(int i = 0; i < 2; i++) {
             c++;
-            checkSignalFrame(c, X);
+            checkSignalFrame(c);
         }
         X += std::stoi(s.substr(5, s.size() - 5));
     }
@@ -58,5 +76,8 @@ int main(int argc, char *argv[]) {
         }
     }
     std::cout << "Total = " << total << std::endl;
+    for(const auto &i: lines) {
+        std::cout << i << std::endl;
+    }
     return 0;
 }
