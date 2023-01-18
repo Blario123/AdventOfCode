@@ -6,6 +6,9 @@
 std::ifstream input;
 struct Monkey;
 std::vector<Monkey> monkeys;
+bool worry = true;
+
+typedef long long llong;
 
 enum Modifier {
     Add,
@@ -20,16 +23,16 @@ struct Operation {
 };
 
 struct Monkey {
-    std::vector<int> items;
+    std::vector<llong> items;
     Operation operation{};
     int test = 0;
     int inspected = 0;
     std::vector<int> throwTo;
-    void process() {
-        for(int & item : items) {
+    void process(int s) {
+        for(long long &item : items) {
             // Increase the inspected count of the monkey
             inspected++;
-            int mN;
+            long long mN;
             if(operation.n == 0) {
                 mN = item;
             } else {
@@ -50,8 +53,15 @@ struct Monkey {
                     item /= mN;
                     break;
             }
-            // Divide the number by 3 to account for the worry level updating
-            item /= 3;
+            // Process the division if the program is accounting for worry level changing after
+            // Inspection of an item.
+            if(worry) {
+                // Divide the number by 3 to account for the worry level updating
+                item /= 3;
+            } else {
+                // Mod the item using the s (shared modulus) of the monkeys items.
+                item = item % s;
+            }
             // If the item is divisible by item, it will return 0 and
             // The item will be pushed to the respective monkey
             if((item % test) == 0) {
@@ -139,44 +149,52 @@ void processLine(const std::string &s) {
     }
 }
 
-void run(int n) {
-    // For n times, iterate through all the monkeys processing their moves
-    for(int i = 0; i < n; i++) {
-        for(Monkey &j: monkeys) {
-            j.process();
-        }
-    }
-}
-
-long calculateMB() {
+unsigned long calculateMB() {
     // Allocate the first monkeys inspected number to t1
-    long t1 = monkeys[0].inspected, t2 = 0;
-    for(const auto &i: monkeys) {
+    unsigned long t1 = monkeys[0].inspected, t2 = 0;
+    for(int i = 1; i < monkeys.size(); i++) {
         // Iterate through monkeys and if the inspected number is
         // Greater than t1, t2 becomes t1 and t1 becomes inspected
         // This is the new top 2 highest
-        if(i.inspected > t1) {
+        if(monkeys[i].inspected >= t1) {
             t2 = t1;
-            t1 = i.inspected;
+            t1 = monkeys[i].inspected;
+        } else {
+            if(monkeys[i].inspected >= t2) {
+                t2 = monkeys[i].inspected;
+            }
         }
     }
     // Return the product of the top two inspected counts
     return t1 * t2;
 }
 
+void run(int n) {
+    // Calculate a shared modulus value for allowing larger numbers to be processed
+    int sMod = 1;
+    for(auto &i: monkeys) {
+        sMod *= i.test;
+    }
+    // For n times, iterate through all the monkeys processing their moves
+    for(int i = 0; i < n; i++) {
+        for(Monkey &j: monkeys) {
+            j.process(sMod);
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     // Template for command line arguments
-#if 0
+    int iterations;
     if(argc > 1) {
-         = atoi(argv[1]);
+        iterations = std::atoi(argv[1]);
+        if(std::string(argv[2]) == "false") {
+            worry = false;
+        }
     } else {
-        std::cout << "Usage: " << argv[0] << "" << std::endl;
+        std::cout << "Usage: " << argv[0] << " [Iterations] [Worry]->(true/false)" << std::endl;
         return 0;
     }
-#else
-    (void) argc;
-    (void) argv;
-#endif
     // Load file and process the lines
     input.open("Day11.txt");
     if(!input.is_open()) {
@@ -187,7 +205,7 @@ int main(int argc, char *argv[]) {
         processLine(temp);
     }
     // Run the monkey processing 20 times
-    run(20);
+    run(iterations);
     std::cout << "Monkey business = " << calculateMB() << std::endl;
     return 0;
 }
