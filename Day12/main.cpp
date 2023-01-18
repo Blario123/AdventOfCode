@@ -9,6 +9,9 @@ std::vector<std::string> lines;
 struct Pos {
     int x = 0;
     int y = 0;
+    Pos() = default;
+    Pos(int pX, int pY) : x(pX), y(pY) {
+    }
 };
 
 struct Node {
@@ -16,29 +19,66 @@ struct Node {
     char c = 0;
     int depth = 0;
     std::vector<Node> children;
+    Node() = default;
+    Node(Pos pPos, char pC, int pDepth) : pos(pPos), c(pC), depth(pDepth) {
+    }
 };
+
+std::vector<Pos> visitedPositions;
+
+Pos currPos;
+bool isVisited(const Pos &p) {
+//    printf("isVisited processing pos %i,%i against currPos of %i,%i\n", p.x, p.y, currPos.x, currPos.y);
+    if(p.x == currPos.x && p.y == currPos.y) {
+//        printf("Already visited\n");
+        return true;
+    }
+    return false;
+}
 
 void processNode(Node &n) {
     // Search around the node for possible children
     if(n.c == 'S') {
+        visitedPositions.push_back(n.pos);
         n.c = 'a' - 1;
     }
-    for(int i = n.pos.y - 1; i < 2; i++) {
-        if(i < 0 && i >= lines.size()) {
+    if(n.c == 'z') {
+        printf("Depth = %i\n", n.depth - 1);
+        n.c = 'E' - 1;
+    }
+    printf("Node %c at %i,%i\n", n.c, n.pos.x, n.pos.y);
+    // Check directly up and down
+    std::vector<Pos> pointsToAdd;
+    for(int i = n.pos.y - 1; i < n.pos.y + 2; i++) {
+        if(i < 0 || i >= lines.size() || i == n.pos.y) {
             continue;
         }
-        for(int j = n.pos.x - 1; j < 2; j++) {
-            if(j < 0 && j >= lines[0].size()) {
-                continue;
-            }
-            if(lines[i][j] == n.c + 1) {
-                Node newNode;
-                newNode.pos.x = j;
-                newNode.pos.y = i;
-                newNode.c = lines[i][j];
-                newNode.depth = n.depth + 1;
-                n.children.push_back(newNode);
-            }
+        if(lines[i][n.pos.x] == n.c || lines[i][n.pos.x] == n.c + 1) {
+            printf("UD Point of interest = %c at %i,%i\n", lines[i][n.pos.x], n.pos.x, i);
+            pointsToAdd.emplace_back(Pos(n.pos.x, i));
+        }
+    }
+    // Check directly left and right
+    for(int i = n.pos.x - 1; i < n.pos.x + 2; i++) {
+        if(i < 0 || i >= lines[0].size() || i == n.pos.x) {
+            continue;
+        }
+        if(lines[n.pos.y][i] == n.c || lines[n.pos.y][i] == n.c + 1) {
+            printf("LR Point of interest = %c at %i,%i\n", lines[n.pos.y][i], i, n.pos.y);
+            pointsToAdd.emplace_back(Pos(i, n.pos.y));
+        }
+    }
+    for(auto &i: pointsToAdd) {
+//        printf("pointsToAdd processing %i,%i\n", i.x, i.y);
+        currPos = i;
+        if(!std::any_of(visitedPositions.begin(), visitedPositions.end(), isVisited)) {
+            Node newNode;
+            newNode.pos = i;
+            newNode.c = lines[i.y][i.x];
+            newNode.depth = n.depth + 1;
+            n.children.push_back(newNode);
+            visitedPositions.emplace_back(i);
+//            printf("Adding new pos %c at %i,%i\n", newNode.c, newNode.pos.x, newNode.pos.y);
         }
     }
     for(auto &i: n.children) {
@@ -79,7 +119,10 @@ int main(int argc, char *argv[]) {
             end.y = (int) lines.size() - 1;
         }
     }
+    printf("Start node pos = %i,%i\n", start.pos.x, start.pos.y);
     printf("End node pos = %i,%i\n", end.x, end.y);
     processNode(start);
     return 0;
 }
+
+#pragma clang diagnostic pop
