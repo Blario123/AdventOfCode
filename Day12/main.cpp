@@ -2,9 +2,12 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <queue>
 
 std::ifstream input;
 std::vector<std::string> lines;
+std::vector<std::vector<bool>> visitedTable;
+int height(char &c);
 
 struct Pos {
     int x = 0;
@@ -12,77 +15,97 @@ struct Pos {
     Pos() = default;
     Pos(int pX, int pY) : x(pX), y(pY) {
     }
-};
-
-struct Node {
-    Pos pos;
-    char c = 0;
-    int depth = 0;
-    std::vector<Node> children;
-    Node() = default;
-    Node(Pos pPos, char pC, int pDepth) : pos(pPos), c(pC), depth(pDepth) {
+    inline bool operator==(const Pos &rhs) const {
+        return x == rhs.x && y == rhs.y;
     }
 };
 
-std::vector<Pos> visitedPositions;
-
-Pos currPos;
-bool isVisited(const Pos &p) {
-//    printf("isVisited processing pos %i,%i against currPos of %i,%i\n", p.x, p.y, currPos.x, currPos.y);
-    if(p.x == currPos.x && p.y == currPos.y) {
-//        printf("Already visited\n");
-        return true;
+std::vector<Pos> neighbours(Pos &p) {
+    std::vector<Pos> n;
+    std::vector<Pos> toCheck = {Pos(p.x - 1, p.y),
+                                Pos(p.x + 1, p.y),
+                                Pos(p.x, p.y - 1),
+                                Pos(p.x, p.y + 1)};
+    for(auto i: toCheck) {
+        // Ensure the position is not out of bounds of the vectors
+        if(i.x < 0 || i.x >= lines[0].size()) {
+            continue;
+        }
+        if(i.y < 0 || i.y >= lines.size()) {
+            continue;
+        }
+        // If the height is at most 1 higher and lower, add it to the list to return
+        if(height(lines[i.y][i.x]) <= height(lines[p.y][p.x]) + 1) {
+            n.emplace_back(i);
+        }
     }
-    return false;
+    return n;
 }
 
-void processNode(Node &n) {
-    // Search around the node for possible children
-    if(n.c == 'S') {
-        visitedPositions.push_back(n.pos);
-        n.c = 'a' - 1;
+struct QueueNode {
+    int dist = 0;
+    Pos pos = Pos(0,0);
+    QueueNode() = default;
+    QueueNode(int d, Pos &p) : dist(d), pos(p) {};
+};
+
+struct CompareDist {
+    bool operator()(const QueueNode &n1, const QueueNode &n2) {
+        return n1.dist > n2.dist;
     }
-    if(n.c == 'z') {
-        printf("Depth = %i\n", n.depth - 1);
-        n.c = 'E' - 1;
-    }
-    printf("Node %c at %i,%i\n", n.c, n.pos.x, n.pos.y);
-    // Check directly up and down
-    std::vector<Pos> pointsToAdd;
-    for(int i = n.pos.y - 1; i < n.pos.y + 2; i++) {
-        if(i < 0 || i >= lines.size() || i == n.pos.y) {
+};
+
+// Using Dijkstra's Algorithm
+void processNode(Pos &s, Pos &e) {
+    // s is the start Pos, e is the end Pos
+    // Create a priority queue sorted by dist from the start node
+    std::priority_queue<QueueNode, std::vector<QueueNode>, CompareDist> q;
+    // Add the start node with a distance of 0 to the queue
+    q.emplace(0, s);
+    // The current node being processed. Used once the end has been found
+    QueueNode qn;
+    // While it hasn't found the end position, process neighbours
+    while(true) {
+        // Access the first element and remove it from the queue
+        qn = q.top();
+        q.pop();
+        // If it has been visited already skip, if not, mark it as visited
+        if(visitedTable[qn.pos.y][qn.pos.x]) {
             continue;
         }
-        if(lines[i][n.pos.x] == n.c || lines[i][n.pos.x] == n.c + 1) {
-            printf("UD Point of interest = %c at %i,%i\n", lines[i][n.pos.x], n.pos.x, i);
-            pointsToAdd.emplace_back(Pos(n.pos.x, i));
+        visitedTable[qn.pos.y][qn.pos.x] = true;
+        // If it is the end, break the while loop
+        if(qn.pos == e) {
+            break;
+        }
+        // Add the neighbours to the queue with an increasing distance
+        for(auto &i: neighbours(qn.pos)) {
+            q.emplace(qn.dist + 1, i);
         }
     }
-    // Check directly left and right
-    for(int i = n.pos.x - 1; i < n.pos.x + 2; i++) {
-        if(i < 0 || i >= lines[0].size() || i == n.pos.x) {
-            continue;
-        }
-        if(lines[n.pos.y][i] == n.c || lines[n.pos.y][i] == n.c + 1) {
-            printf("LR Point of interest = %c at %i,%i\n", lines[n.pos.y][i], i, n.pos.y);
-            pointsToAdd.emplace_back(Pos(i, n.pos.y));
-        }
-    }
-    for(auto &i: pointsToAdd) {
-//        printf("pointsToAdd processing %i,%i\n", i.x, i.y);
-        currPos = i;
-        if(!std::any_of(visitedPositions.begin(), visitedPositions.end(), isVisited)) {
-            Node newNode;
-            newNode.pos = i;
-            newNode.c = lines[i.y][i.x];
-            newNode.depth = n.depth + 1;
-            n.children.push_back(newNode);
-            visitedPositions.emplace_back(i);
-//            printf("Adding new pos %c at %i,%i\n", newNode.c, newNode.pos.x, newNode.pos.y);
-        }
-    }
-    for(auto &i: n.children) {
-        processNode(i);
+    printf("Found character %c after %i moves\n", lines[qn.pos.y][qn.pos.x], qn.dist);
+}
+
+void createVisitedTable(const std::vector<std::string> &v) {
+    // Create a row of all falses for the size of the lines
+    std::vector<bool> tempRow(v[0].size(), false);
+    // Create a vector of the rows for the size of the lines vector
+    std::vector<std::vector<bool>> tempTable(v.size(), tempRow);
+    visitedTable = tempTable;
+}
+
+int height(char &c) {
+    // If the character lies within 'a' and 'z' return the relative integer
+    // If the character is 'S', return 0 as it is the start
+    // If the character is 'E', return 25 as it is the end
+    if(c >= 'a' && c <= 'z') {
+        return c - 'a';
+    } else if(c == 'S') {
+        return 0;
+    } else if(c == 'E') {
+        return 25;
+    } else {
+        return -1;
     }
 }
 
@@ -104,25 +127,22 @@ int main(int argc, char *argv[]) {
     if(!input.is_open()) {
         return -1;
     }
-    Node start;
+    // Allocate the start and end positions for the searching.
+    Pos start;
     Pos end;
     std::string temp;
     while(getline(input, temp)) {
         lines.emplace_back(temp);
         if(temp.find('S') != std::string::npos) {
-            start.pos.x = (int) temp.find('S');
-            start.pos.y = (int) lines.size() - 1;
-            start.c = 'S';
+            start.x = (int) temp.find('S');
+            start.y = (int) lines.size() - 1;
         }
         if(temp.find('E') != std::string::npos) {
             end.x = (int) temp.find('E');
             end.y = (int) lines.size() - 1;
         }
     }
-    printf("Start node pos = %i,%i\n", start.pos.x, start.pos.y);
-    printf("End node pos = %i,%i\n", end.x, end.y);
-    processNode(start);
+    createVisitedTable(lines);
+    processNode(start, end);
     return 0;
 }
-
-#pragma clang diagnostic pop
