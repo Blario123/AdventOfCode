@@ -8,6 +8,7 @@ std::ifstream input;
 std::vector<std::string> lines;
 std::vector<std::vector<bool>> visitedTable;
 int height(char &c);
+bool reverse;
 
 struct Pos {
     int x = 0;
@@ -35,8 +36,14 @@ std::vector<Pos> neighbours(Pos &p) {
             continue;
         }
         // If the height is at most 1 higher and lower, add it to the list to return
-        if(height(lines[i.y][i.x]) <= height(lines[p.y][p.x]) + 1) {
-            n.emplace_back(i);
+        if(reverse) {
+            if(height(lines[i.y][i.x]) >= height(lines[p.y][p.x]) - 1) {
+                n.emplace_back(i);
+            }
+        } else {
+            if(height(lines[i.y][i.x]) <= height(lines[p.y][p.x]) + 1) {
+                n.emplace_back(i);
+            }
         }
     }
     return n;
@@ -86,6 +93,36 @@ void processNode(Pos &s, Pos &e) {
     printf("Found character %c after %i moves\n", lines[qn.pos.y][qn.pos.x], qn.dist);
 }
 
+void processNode(Pos &s, int e) {
+    // s is the start Pos, e is the end Pos
+    // Create a priority queue sorted by dist from the start node
+    std::priority_queue<QueueNode, std::vector<QueueNode>, CompareDist> q;
+    // Add the start node with a distance of 0 to the queue
+    q.emplace(0, s);
+    // The current node being processed. Used once the end has been found
+    QueueNode qn;
+    // While it hasn't found the end position, process neighbours
+    while(true) {
+        // Access the first element and remove it from the queue
+        qn = q.top();
+        q.pop();
+        // If it has been visited already skip, if not, mark it as visited
+        if(visitedTable[qn.pos.y][qn.pos.x]) {
+            continue;
+        }
+        visitedTable[qn.pos.y][qn.pos.x] = true;
+        // If it is the end, break the while loop
+        if(height(lines[qn.pos.y][qn.pos.x]) == 0) {
+            break;
+        }
+        // Add the neighbours to the queue with an increasing distance
+        for(auto &i: neighbours(qn.pos)) {
+            q.emplace(qn.dist + 1, i);
+        }
+    }
+    printf("Found character %c after %i moves\n", lines[qn.pos.y][qn.pos.x], qn.dist);
+}
+
 void createVisitedTable(const std::vector<std::string> &v) {
     // Create a row of all falses for the size of the lines
     std::vector<bool> tempRow(v[0].size(), false);
@@ -111,17 +148,16 @@ int height(char &c) {
 
 int main(int argc, char *argv[]) {
     // Template for command line arguments
-#if 0
     if(argc > 1) {
-         = std::atoi(argv[1]);
+        if(std::string(argv[1]) == "true") {
+            reverse = true;
+        } else {
+            reverse = false;
+        }
     } else {
-        std::cout << "Usage: " << argv[0] << " " << std::endl;
+        std::cout << "Usage: " << argv[0] << " [true/false] - (True to reverse the search from End to ground level, false to go from S to E)" << std::endl;
         return 0;
     }
-#else 
-    (void) argc;
-    (void) argv;
-#endif
     // Load file and process the lines
     input.open("Day12.txt");
     if(!input.is_open()) {
@@ -143,6 +179,10 @@ int main(int argc, char *argv[]) {
         }
     }
     createVisitedTable(lines);
-    processNode(start, end);
+    if(reverse) {
+        processNode(end, 0);
+    } else {
+        processNode(start, end);
+    }
     return 0;
 }
