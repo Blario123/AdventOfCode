@@ -14,21 +14,44 @@ struct Packet {
 std::vector<Packet> packets;
 
 Packet createPacket(std::string &s) {
+    printf("createPacket called with %s\n", s.c_str());
     Packet tPacket;
     // Remove leading and trailing '[' and ']'
     s = s.substr(1, s.size() - 2);
     // Reduce all lists into -1
-    if(std::count(s.begin(), s.end(), '[') > 0) {
-        
-    }
     std::size_t start;
     std::size_t end = 0;
+    std::string newS = s;
+    if(std::count(s.begin(), s.end(), '[') > 0) {
+        int toCloseCount = 0;
+        for(int i = 0; i < s.size(); i++) {
+            if(s[i] == '[') {
+                if(toCloseCount == 0) {
+                    start = i;
+                }
+                toCloseCount++;
+            }
+            if(s[i] == ']') {
+                std::size_t diff = 0;
+                end = i + 1;
+                if(--toCloseCount == 0) {
+                    std::string subString = s.substr(start, end - start);
+                    printf("Substring = %s\n", subString.c_str());
+                    tPacket.subPackets.emplace_back(createPacket(subString));
+                }
+                diff = s.size() - newS.size();
+                printf("Pre replace\ts = %s\tnewS = %s\n", s.c_str(), newS.c_str());
+                newS.replace(start - diff, end - start, "-1");
+                printf("Aft replace\ts = %s\tnewS = %s\n", s.c_str(), newS.c_str());
+            }
+        }
+    }
+    s = newS;
+    end = 0;
     while((start = s.find_first_not_of(',', end)) != std::string::npos) {
         end = s.find(',', start);
         tPacket.data.emplace_back(std::stoi(s.substr(start, end - start)));
     }
-    printf("%s\n", s.c_str());
-    printf("Data size = %zu\n", tPacket.data.size());
     return tPacket;
 }
 
