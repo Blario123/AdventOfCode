@@ -1,45 +1,46 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 
 std::ifstream input;
 struct Packet;
 
 struct Packet {
-    std::vector<int> data;
-    std::vector<Packet> subPackets;
+    std::vector<int> data{};
+    std::vector<Packet> subPackets{};
 };
 
 std::vector<Packet> packets;
 
-Packet createPacket(const std::vector<std::string> &v) {
+Packet createPacket(std::string &s) {
+    Packet tPacket;
+    // Remove leading and trailing '[' and ']'
+    s = s.substr(1, s.size() - 2);
+    // Reduce all lists into -1
+    if(std::count(s.begin(), s.end(), '[') > 0) {
+        
+    }
+    std::size_t start;
+    std::size_t end = 0;
+    while((start = s.find_first_not_of(',', end)) != std::string::npos) {
+        end = s.find(',', start);
+        tPacket.data.emplace_back(std::stoi(s.substr(start, end - start)));
+    }
+    printf("%s\n", s.c_str());
+    printf("Data size = %zu\n", tPacket.data.size());
+    return tPacket;
+}
+
+bool comparePackets(const Packet &p1, const Packet &p2) {
 
 }
 
-bool comparePackets() {
-
-}
-
-void processLine(const std::string &s) {
+void processLine(std::string &s) {
     if(s.empty()) {
         return;
     }
-    std::vector<std::string> items;
-    // Split the items into substrings of lists, or integers
-    // Allocate list items as -1 to detect when processing
-    std::size_t start;
-    std::size_t end = 1;
-    while((start = s.find_first_not_of(',', end)) != std::string::npos) {
-        end = s.find(',', start);
-        items.emplace_back(s.substr(start, end - start));
-    }
-    for(auto i: items) {
-        if(i.find('[') != std::string::npos) {
-            printf("New list");
-        }
-        printf("%s\n", i.c_str());
-    }
-    printf("\n");
+    packets.emplace_back(createPacket(s));
 }
 
 int main(int argc, char *argv[]) {
