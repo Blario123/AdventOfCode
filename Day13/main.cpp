@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <type_traits>
 
 std::ifstream input;
 struct Packet;
@@ -14,7 +15,6 @@ struct Packet {
 std::vector<Packet> packets;
 
 Packet createPacket(std::string &s) {
-    printf("createPacket called with %s\n", s.c_str());
     Packet tPacket;
     // Remove leading and trailing '[' and ']'
     s = s.substr(1, s.size() - 2);
@@ -36,13 +36,10 @@ Packet createPacket(std::string &s) {
                 end = i + 1;
                 if(--toCloseCount == 0) {
                     std::string subString = s.substr(start, end - start);
-                    printf("Substring = %s\n", subString.c_str());
                     tPacket.subPackets.emplace_back(createPacket(subString));
+                    diff = s.size() - newS.size();
+                    newS.replace(start - diff, end - start, "-1");
                 }
-                diff = s.size() - newS.size();
-                printf("Pre replace\ts = %s\tnewS = %s\n", s.c_str(), newS.c_str());
-                newS.replace(start - diff, end - start, "-1");
-                printf("Aft replace\ts = %s\tnewS = %s\n", s.c_str(), newS.c_str());
             }
         }
     }
@@ -55,8 +52,41 @@ Packet createPacket(std::string &s) {
     return tPacket;
 }
 
-bool comparePackets(const Packet &p1, const Packet &p2) {
+Packet convertToPacket(int i) {
+    Packet p;
+    p.data.emplace_back(i);
+    return p;
+}
 
+bool comparePackets(const Packet &p1, const Packet &p2) {
+    std::size_t size = (p1.data.size() > p2.data.size()) ? p1.data.size() : p2.data.size();
+    // If p1 is empty before p2, they are in the correct order
+    if(p1.data.empty() && !p2.data.empty()) {
+        return true;
+    }
+    int p1subPacketCounter = 0;
+    int p2subPacketCounter = 0;
+    for(int i = 0; i < size; i++) {
+        if(i == p1.data.size()) {
+            break;
+        } else if(i == p2.data.size()) {
+            break;
+        }
+        if(p1.data[i] == -1 && p2.data[i] == -1) {
+            if(!comparePackets(p1.subPackets[p1subPacketCounter++], p2.subPackets[p2subPacketCounter])) {
+                return false;
+            }
+            continue;
+        } else if(p1.data[i] == -1 && p2.data[i] != -1) {
+            comparePackets(p1.subPackets[p1subPacketCounter++], convertToPacket(p2.data[i]));
+            continue;
+        }
+        // If the left hand int is less than the right hand int, they are in the correct order.
+        if(p1.data[i] < p2.data[i]) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void processLine(std::string &s) {
@@ -87,11 +117,11 @@ int main(int argc, char *argv[]) {
     std::string temp;
     while(getline(input, temp)) {
         processLine(temp);
-//        if(packets.size() == 2) {
-//            comparePackets();
-            // After processing the packets, clear the vector
-//            packets.resize(0);
-//        }
+       if(packets.size() == 2) {
+           printf("%i\n", comparePackets(packets[0], packets[1]));
+           // After processing the packets, clear the vector
+           packets.resize(0);
+       }
     }
     return 0;
 }
