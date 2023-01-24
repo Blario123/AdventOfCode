@@ -68,22 +68,35 @@ bool comparePackets(const Packet &p1, const Packet &p2) {
     int p2subPacketCounter = 0;
     for(int i = 0; i < size; i++) {
         if(i == p1.data.size()) {
-            break;
-        } else if(i == p2.data.size()) {
-            break;
-        }
-        if(p1.data[i] == -1 && p2.data[i] == -1) {
-            if(!comparePackets(p1.subPackets[p1subPacketCounter++], p2.subPackets[p2subPacketCounter])) {
-                return false;
+            if(i <= p2.data.size()) {
+                return true;
             }
-            continue;
+            return false;
+        } else if(i == p2.data.size()) {
+            return false;
+        }
+        printf("Comparing %i to %i\n", p1.data[i], p2.data[i]);
+        if(p1.data[i] == -1 && p2.data[i] == -1) {
+            printf("Comparing list to list\n");
+            if(comparePackets(p1.subPackets[p1subPacketCounter++], p2.subPackets[p2subPacketCounter])) {
+                return true;
+            }
         } else if(p1.data[i] == -1 && p2.data[i] != -1) {
-            comparePackets(p1.subPackets[p1subPacketCounter++], convertToPacket(p2.data[i]));
-            continue;
+            printf("Comparing list to int\n");
+            if(comparePackets(p1.subPackets[p1subPacketCounter++], convertToPacket(p2.data[i]))) {
+                return true;
+            }
+        } else if(p1.data[i] != -1 && p2.data[i] == -1) {
+            printf("Comparing int to list\n");
+            if(comparePackets(convertToPacket(p1.data[i]), p2.subPackets[p2subPacketCounter])) {
+                return true;
+            }
         }
         // If the left hand int is less than the right hand int, they are in the correct order.
         if(p1.data[i] < p2.data[i]) {
             return true;
+        } else if(p1.data[i] > p2.data[i]) {
+            return false;
         }
     }
     return false;
@@ -115,13 +128,21 @@ int main(int argc, char *argv[]) {
     }
     // Allocate the start and end positions for the searching.
     std::string temp;
+    int count = 1;
+    int total = 0;
     while(getline(input, temp)) {
         processLine(temp);
        if(packets.size() == 2) {
-           printf("%i\n", comparePackets(packets[0], packets[1]));
+           bool result = comparePackets(packets[0], packets[1]);
+           printf("%i\n", result);
+           if(result) {
+               total += count;
+           }
+           count++;
            // After processing the packets, clear the vector
-           packets.resize(0);
+//           packets.resize(0);
        }
     }
+    printf("Total = %i", total);
     return 0;
 }
