@@ -59,44 +59,51 @@ Packet convertToPacket(int i) {
 }
 
 bool comparePackets(const Packet &p1, const Packet &p2) {
+    // Determine the greater data.size() of the two packets to compare
     std::size_t size = (p1.data.size() > p2.data.size()) ? p1.data.size() : p2.data.size();
     // If p1 is empty before p2, they are in the correct order
     if(p1.data.empty() && !p2.data.empty()) {
         return true;
     }
-    int p1subPacketCounter = 0;
-    int p2subPacketCounter = 0;
+    // A pair of ints are used to house the counters for iterating through subPackets
+    std::pair<int, int> counters = {0,0};
     for(int i = 0; i < size; i++) {
         if(i == p1.data.size()) {
-            if(i <= p2.data.size()) {
+            printf("p1 size reached %i %zu\n", i, p2.data.size() - 1);
+            if(i < p2.data.size()) {
+                return false;
+            }
+            if(i == p2.data.size()) {
                 return true;
             }
-            return false;
         } else if(i == p2.data.size()) {
+            printf("p2 size reached %i %zu\n", i, p2.data.size() - 1);
             return false;
         }
         printf("Comparing %i to %i\n", p1.data[i], p2.data[i]);
-        if(p1.data[i] == -1 && p2.data[i] == -1) {
-            printf("Comparing list to list\n");
-            if(comparePackets(p1.subPackets[p1subPacketCounter++], p2.subPackets[p2subPacketCounter])) {
+        if(p1.data[i] == -1 || p2.data[i] == -1) {
+            Packet tp1, tp2;
+            if(p1.data[i] == -1) {
+                tp1 = p1.subPackets[counters.first++];
+            } else {
+                tp1 = convertToPacket(p1.data[i]);
+            }
+            if(p2.data[i] == -1) {
+                tp2 = p2.subPackets[counters.second++];
+            } else {
+                tp2 = convertToPacket(p2.data[i]);
+            }
+            if(comparePackets(tp1, tp2)) {
                 return true;
             }
-        } else if(p1.data[i] == -1 && p2.data[i] != -1) {
-            printf("Comparing list to int\n");
-            if(comparePackets(p1.subPackets[p1subPacketCounter++], convertToPacket(p2.data[i]))) {
+        } else {
+            if(p1.data[i] < p2.data[i]) {
                 return true;
+            } else if(p1.data[i] > p2.data[i]){
+                return false;
+            } else {
+                continue;
             }
-        } else if(p1.data[i] != -1 && p2.data[i] == -1) {
-            printf("Comparing int to list\n");
-            if(comparePackets(convertToPacket(p1.data[i]), p2.subPackets[p2subPacketCounter])) {
-                return true;
-            }
-        }
-        // If the left hand int is less than the right hand int, they are in the correct order.
-        if(p1.data[i] < p2.data[i]) {
-            return true;
-        } else if(p1.data[i] > p2.data[i]) {
-            return false;
         }
     }
     return false;
@@ -140,7 +147,7 @@ int main(int argc, char *argv[]) {
            }
            count++;
            // After processing the packets, clear the vector
-//           packets.resize(0);
+           packets.resize(0);
        }
     }
     printf("Total = %i", total);
