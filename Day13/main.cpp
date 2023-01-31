@@ -2,7 +2,6 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
-#include <type_traits>
 
 std::ifstream input;
 
@@ -19,23 +18,23 @@ enum State {
 
 std::vector<Packet> packets;
 
-Packet createPacket(std::string &s) {
+Packet createPacket(const std::string &s) {
     Packet tPacket;
     // Remove leading and trailing '[' and ']'
-    s = s.substr(1, s.size() - 2);
+    std::string newS = s.substr(1, s.size() - 2);
+    std::string tempS = newS;
     std::size_t start;
     std::size_t end;
-    std::string newS = s;
     // Reduce child lists to a -1 to denote the position when processed
     // If no '[' is found in the string, process all the integers
-    if(std::count(s.begin(), s.end(), '[') > 0) {
+    if(std::count(newS.begin(), newS.end(), '[') > 0) {
         // Keep track of the depth of nested lists
         int toCloseCount = 0;
         std::size_t diff;
         // Iterate through the string, replacing a duplicate temporary string list with "-1"
-        for(int i = 0; i < s.size(); i++) {
+        for(int i = 0; i < newS.size(); i++) {
             // If a new '[' is added, set the start for the first instance, and increment the depth
-            if(s[i] == '[') {
+            if(newS[i] == '[') {
                 if(toCloseCount == 0) {
                     start = i;
                 }
@@ -43,26 +42,26 @@ Packet createPacket(std::string &s) {
             }
             // Decrement the counter on a closing bracket, eventually finding the end of the sublist
             // This string can then be processed through createPacket
-            if(s[i] == ']') {
+            if(newS[i] == ']') {
                 end = i + 1;
                 if(--toCloseCount == 0) {
                     // Create the substring of the nested list
                     // Add the packet of this substring and add it to Packet::subPackets
-                    std::string subString = s.substr(start, end - start);
+                    std::string subString = newS.substr(start, end - start);
                     tPacket.subPackets.emplace_back(createPacket(subString));
-                    diff = s.size() - newS.size();
-                    newS.replace(start - diff, end - start, "-1");
+                    diff = newS.size() - tempS.size();
+                    tempS.replace(start - diff, end - start, "-1");
                 }
             }
         }
     }
     // s can become the temporary string with all sublists removed
-    s = newS;
+    newS = tempS;
     end = 0;
     // Convert all the strings into integers and add them into Packet::data
-    while((start = s.find_first_not_of(',', end)) != std::string::npos) {
-        end = s.find(',', start);
-        tPacket.data.emplace_back(std::stoi(s.substr(start, end - start)));
+    while((start = newS.find_first_not_of(',', end)) != std::string::npos) {
+        end = newS.find(',', start);
+        tPacket.data.emplace_back(std::stoi(newS.substr(start, end - start)));
     }
     // Return the packet, if there is no data, it will still be added and detected using Packet::data.empty()
     return tPacket;
@@ -133,6 +132,33 @@ void processLine(std::string &s) {
     }
 }
 
+void sortPackets(std::vector<Packet> &v) {
+    bool sorted = false;
+    while(!sorted) {
+        std::size_t inPos = 0;
+        std::vector<Packet> tV = v;
+        for(int i = 0; i < v.size() - 1; i++) {
+            State result = comparePackets(v[i], v[i + 1]);
+            switch(result) {
+                case True:
+                    // Do not need to rearrange the elements
+                    inPos++;
+                    break;
+                case False:
+                    // The elements can be swapped
+                    std::iter_swap(tV.begin() + i, tV.begin() + i + 1);
+                    break;
+                case Unknown:
+                    break;
+            }
+        }
+        if(inPos == v.size() - 1) {
+            sorted = true;
+        }
+        v = tV;
+    }
+}
+
 int main(int argc, char *argv[]) {
     // Template for command line arguments
 #if 0
@@ -150,24 +176,42 @@ int main(int argc, char *argv[]) {
     if(!input.is_open()) {
         return -1;
     }
+    // Process the lines of the file, adding new Packet elements to packets
     std::string temp;
-    // currLine is the current position of the line being processed.
+    while(getline(input, temp)) {
+        processLine(temp);
+    }
+    // currLine is the current position of the line being processed
     // This is used for the total calculation
     int currLine = 1;
     int total = 0;
-    while(getline(input, temp)) {
-        processLine(temp);
-        // Only compare the two vectors in a pair
-        if(packets.size() == 2) {
-            State result = comparePackets(packets[0], packets[1]);
-            if(result == True) {
-               total += currLine;
-            }
-            currLine++;
-            // After processing the packets, clear the vector
-            packets.resize(0);
+    // Only compare the two vectors in a pair
+    for(int i = 0; i < packets.size(); i += 2) {
+        State result = comparePackets(packets[i], packets[i + 1]);
+        if(result == True) {
+            total += currLine;
+        }
+        currLine++;
+    }
+    printf("Total = %i\n", total);
+    // Add the divider packets
+    packets.emplace_back(createPacket("[[2]]"));
+    packets.emplace_back(createPacket("[[6]]"));
+    // Sort the packets
+    sortPackets(packets);
+    std::vector<int> keyPos;
+    for(int i = 0; i < packets.size(); i++) {
+        if(packets[i].subPackets.size() != 1) {
+            continue;
+        }
+        if(packets[i].subPackets[0].data.size() != 1) {
+            continue;
+        }
+        int data = packets[i].subPackets[0].data[0];
+        if(data == 2 || data == 6) {
+            keyPos.push_back(i + 1);
         }
     }
-    printf("Total = %i", total);
+    printf("Decoder key = %i", keyPos[0] * keyPos[1]);
     return 0;
 }
