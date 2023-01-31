@@ -47,8 +47,46 @@ Limits calculateLimits() {
     return l;
 }
 
-void processPaths() {
+void processPaths(Limits &l, std::vector<std::vector<char>> &g) {
+    for(const auto &i: paths) {
+        std::pair<int, int> pos = {0, 0};
+        for(int j = 1; j < i.path.size(); j++) {
+            // To construct the rock formations, the from and to positions are needed
+            // These are used to calculate the delta between moves
+            Move from = i.path[j - 1];
+            Move to = i.path[j];
+            int deltaX = to.x - from.x;
+            int deltaY = to.y - from.y;
+            // Only process moves that aren't 0
+            if(deltaX != 0) {
+                // Correct for 0th position incrementing by either 1 or -1
+                deltaX += abs(deltaX)/deltaX;
+                if(deltaX < 0) {
+                    for(int hz = from.x - l.left; hz > (from.x - l.left) + deltaX; hz--) {
+                        g[from.y][hz] = '#';
+                    }
+                } else {
+                    for(int hz = from.x - l.left; hz < (from.x - l.left) + deltaX; hz++) {
+                        g[from.y][hz] = '#';
+                    }
+                }
+                pos.first += deltaX;
+            } else {
+                // Correct for 0th position incrementing by either 1 or -1
+                deltaY += abs(deltaY) / deltaY;
+                if(deltaY < 0) {
+                    for(int vt = from.y; vt > from.y + deltaY; vt--) {
 
+                    }
+                } else {
+                    for(int vt = from.y; vt < from.y + deltaY; vt++) {
+                        g[vt][from.x - l.left] = '#';
+                    }
+                }
+                pos.second += deltaY;
+            }
+        }
+    }
 }
 
 void processLine(std::string &s) {
@@ -70,6 +108,13 @@ void printGrid(std::vector<std::vector<char>> &v) {
             printf("%c", j);
         }
         printf("\n");
+    }
+}
+
+void fillGrid(std::vector<std::vector<char>> &v) {
+    bool enterTheAbyss = false;
+    while(!enterTheAbyss) {
+
     }
 }
 
@@ -107,8 +152,9 @@ int main(int argc, char *argv[]) {
     std::vector<std::vector<char>> grid(height, lines);
     // Set the sand start point to a '+'
     grid[0][500 - limits.left] = '+';
-    printGrid(grid);
     // Process all the paths and construct the map
-    processPaths();
+    processPaths(limits, grid);
+    printGrid(grid);
+    fillGrid(grid);
     return 0;
 }
