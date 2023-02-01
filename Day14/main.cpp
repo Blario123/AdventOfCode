@@ -111,10 +111,74 @@ void printGrid(std::vector<std::vector<char>> &v) {
     }
 }
 
-void fillGrid(std::vector<std::vector<char>> &v) {
+void fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
     bool enterTheAbyss = false;
+    int rounds = 0;
     while(!enterTheAbyss) {
-
+        rounds++;
+        // Add a new sand element to the grid at the '+' position
+        int hzPos = 500 - l.left;
+        v[0][hzPos] = 'o';
+        bool atRest = false;
+        while(!atRest) {
+            hzPos = 500 - l.left;
+            for(int i = 1; i < v.size(); i++) {
+                char &prevPos = v[i - 1][hzPos];
+                char &pos = v[i][hzPos];
+                char &leftPos = v[i][hzPos - 1];
+                char &rightPos = v[i][hzPos + 1];
+                if(hzPos == 0) {
+                    if(rightPos != '.') {
+                        prevPos = 'X';
+                        atRest = true;
+                        enterTheAbyss = true;
+                        break;
+                    }
+                } else if(hzPos == v[0].size() - 1) {
+                    if(leftPos != '.') {
+                        prevPos = 'X';
+                        atRest = true;
+                        enterTheAbyss = true;
+                        break;
+                    }
+                }
+                if(pos == '.') {
+                    prevPos = '.';
+                    pos = 'o';
+                } else if(pos == '#') {
+                    if(leftPos == '#' && rightPos == '#') {
+                        atRest = true;
+                        break;
+                    } else if(leftPos == '.') {
+                        prevPos = '.';
+                        leftPos = 'o';
+                        hzPos--;
+                    } else if(rightPos == '.') {
+                        prevPos = '.';
+                        rightPos = 'o';
+                        hzPos++;
+                    }
+                } else if(pos == 'o') {
+                    // Check left
+                    if(leftPos == '.') {
+                        prevPos = '.';
+                        leftPos = 'o';
+                        hzPos--;
+                    } else if(rightPos == '.') {
+                        prevPos = '.';
+                        rightPos = 'o';
+                        hzPos++;
+                    } else {
+                        atRest = true;
+                        break;
+                    }
+                }
+            }
+        }
+        // Used for debugging the iterations of sand
+        if(rounds == 10) {
+            break;
+        }
     }
 }
 
@@ -151,10 +215,22 @@ int main(int argc, char *argv[]) {
     std::vector<char> lines(width, '.');
     std::vector<std::vector<char>> grid(height, lines);
     // Set the sand start point to a '+'
-    grid[0][500 - limits.left] = '+';
     // Process all the paths and construct the map
     processPaths(limits, grid);
+    fillGrid(limits, grid);
+    grid[0][500 - limits.left] = '+';
     printGrid(grid);
-    fillGrid(grid);
+    int count = 0;
+    for(const auto &i: grid) {
+        for(const auto &j: i) {
+            if(j == 'o') {
+                count++;
+            }
+        }
+    }
+    printf("Total sand particles = %i\n", count);
     return 0;
 }
+
+// 7825 Too high
+// 967 Too low
