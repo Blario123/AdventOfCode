@@ -76,7 +76,7 @@ void processPaths(Limits &l, std::vector<std::vector<char>> &g) {
                 deltaY += abs(deltaY) / deltaY;
                 if(deltaY < 0) {
                     for(int vt = from.y; vt > from.y + deltaY; vt--) {
-
+                        g[vt][from.x - l.left] = '#';
                     }
                 } else {
                     for(int vt = from.y; vt < from.y + deltaY; vt++) {
@@ -102,64 +102,49 @@ void processLine(std::string &s) {
     paths.emplace_back(rPath);
 }
 
-void printGrid(std::vector<std::vector<char>> &v) {
-    for(const auto& i: v) {
-        for(const auto &j: i) {
-            printf("%c", j);
-        }
-        printf("\n");
-    }
-}
-
-void fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
-    bool enterTheAbyss = false;
-    int rounds = 0;
-    while(!enterTheAbyss) {
-        rounds++;
+int fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
+    int sandCount = 0;
+    while(true) {
         // Add a new sand element to the grid at the '+' position
         int hzPos = 500 - l.left;
+        // Set the character at the position to 'o' to denote the falling sand
         v[0][hzPos] = 'o';
+        // Use atRest to detect when to add a new piece of sand, once it is stationary, break the while loop
         bool atRest = false;
         while(!atRest) {
-            hzPos = 500 - l.left;
             for(int i = 1; i < v.size(); i++) {
+                // Get a reference to the characters at the previous point, the current point, and one left and right of the current point
+                // These are used to detect for wall/sand/air
                 char &prevPos = v[i - 1][hzPos];
                 char &pos = v[i][hzPos];
                 char &leftPos = v[i][hzPos - 1];
                 char &rightPos = v[i][hzPos + 1];
+                // If the sand reaches the left edge and there is no possible move right, it falls into the abyss
                 if(hzPos == 0) {
                     if(rightPos != '.') {
                         prevPos = 'X';
-                        atRest = true;
-                        enterTheAbyss = true;
-                        break;
+                        return sandCount;
                     }
-                } else if(hzPos == v[0].size() - 1) {
+                // If the sand reaches the right edge and there is no possible move left, it falls into the abyss
+                } else if(hzPos == v[0].size()) {
                     if(leftPos != '.') {
                         prevPos = 'X';
-                        atRest = true;
-                        enterTheAbyss = true;
-                        break;
+                        return sandCount;
                     }
                 }
+                // If the position is air, and it is free, it can be moved into
+                // If the y value of pos is the size of the vector, it is at the floor
                 if(pos == '.') {
+                    if(i == v.size() - 1) {
+                        prevPos = '.';
+                        pos = 'X';
+                        return sandCount;
+                    }
                     prevPos = '.';
                     pos = 'o';
-                } else if(pos == '#') {
-                    if(leftPos == '#' && rightPos == '#') {
-                        atRest = true;
-                        break;
-                    } else if(leftPos == '.') {
-                        prevPos = '.';
-                        leftPos = 'o';
-                        hzPos--;
-                    } else if(rightPos == '.') {
-                        prevPos = '.';
-                        rightPos = 'o';
-                        hzPos++;
-                    }
-                } else if(pos == 'o') {
-                    // Check left
+                // If the position is either wall or sand, detect if there is a free
+                // position to the left, then the right, otherwise it is at rest
+                } else if(pos == '#' || pos == 'o') {
                     if(leftPos == '.') {
                         prevPos = '.';
                         leftPos = 'o';
@@ -174,10 +159,8 @@ void fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
                     }
                 }
             }
-        }
-        // Used for debugging the iterations of sand
-        if(rounds == 10) {
-            break;
+            // Iterate the sandCount to denote how many have been placed.
+            sandCount++;
         }
     }
 }
@@ -217,20 +200,6 @@ int main(int argc, char *argv[]) {
     // Set the sand start point to a '+'
     // Process all the paths and construct the map
     processPaths(limits, grid);
-    fillGrid(limits, grid);
-    grid[0][500 - limits.left] = '+';
-    printGrid(grid);
-    int count = 0;
-    for(const auto &i: grid) {
-        for(const auto &j: i) {
-            if(j == 'o') {
-                count++;
-            }
-        }
-    }
-    printf("Total sand particles = %i\n", count);
+    printf("Total sand particles = %i\n", fillGrid(limits, grid));
     return 0;
 }
-
-// 7825 Too high
-// 967 Too low
