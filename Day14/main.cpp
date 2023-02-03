@@ -102,7 +102,32 @@ void processLine(std::string &s) {
     paths.emplace_back(rPath);
 }
 
-int fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
+// false for left, true for right
+void addExtraLine(bool side, std::vector<std::vector<char>> &v, Limits &l) {
+    if(side) {
+        l.right++;
+        for(auto i: v) {
+            i.push_back('.');
+        }
+    } else {
+        l.left--;
+        for(auto &i: v) {
+            i.insert(i.begin(), '.');
+        }
+    }
+}
+
+void printGrid(Limits &l, std::vector<std::vector<char>> &v) {
+    v[0][500 - l.left] = '+';
+    for(const auto& i: v) {
+        for(const auto &j: i) {
+            printf("%c", j);
+        }
+        printf("\n");
+    }
+}
+
+int fillGrid(Limits &l, std::vector<std::vector<char>> &v, bool floor = false) {
     int sandCount = 0;
     while(true) {
         // Add a new sand element to the grid at the '+' position
@@ -121,30 +146,38 @@ int fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
                 char &rightPos = v[i][hzPos + 1];
                 // If the sand reaches the left edge and there is no possible move right, it falls into the abyss
                 if(hzPos == 0) {
-                    if(rightPos != '.') {
+                    if(rightPos != '.' && !floor) {
                         prevPos = 'X';
                         return sandCount;
+                    } else if(floor) {
+                        addExtraLine(false, v, l);
                     }
                 // If the sand reaches the right edge and there is no possible move left, it falls into the abyss
                 } else if(hzPos == v[0].size()) {
-                    if(leftPos != '.') {
+                    if(leftPos != '.' && !floor) {
                         prevPos = 'X';
                         return sandCount;
+                    } else if(floor) {
+                        addExtraLine(true, v, l);
                     }
                 }
                 // If the position is air, and it is free, it can be moved into
                 // If the y value of pos is the size of the vector, it is at the floor
                 if(pos == '.') {
-                    if(i == v.size() - 1) {
+                    if(i == v.size() - 1 && !floor) {
                         prevPos = '.';
                         pos = 'X';
                         return sandCount;
+                    } else if(floor) {
                     }
                     prevPos = '.';
                     pos = 'o';
                 // If the position is either wall or sand, detect if there is a free
                 // position to the left, then the right, otherwise it is at rest
                 } else if(pos == '#' || pos == 'o') {
+                    if(i == 1) {
+                        return sandCount;
+                    }
                     if(leftPos == '.') {
                         prevPos = '.';
                         leftPos = 'o';
@@ -160,6 +193,7 @@ int fillGrid(Limits &l, std::vector<std::vector<char>> &v) {
                 }
             }
             // Iterate the sandCount to denote how many have been placed.
+            printGrid(l, v);
             sandCount++;
         }
     }
@@ -189,17 +223,20 @@ int main(int argc, char *argv[]) {
     }
     // Determine the left, right and down limits
     Limits limits = calculateLimits();
-    // Calculate the width and height to construct a grid
+    // Calculate the width and height to construct a gridPart1
     // Add 1 to allow for the 0th element
     int width = (limits.right - limits.left) + 1;
     int height = limits.down + 1;
-    // Construct the grid consisting of std::vector<char> as horizontal elements
-    // by the height of the grid
+    // Construct the gridPart1 consisting of std::vector<char> as horizontal elements
+    // by the height of the gridPart1
     std::vector<char> lines(width, '.');
-    std::vector<std::vector<char>> grid(height, lines);
+    std::vector<std::vector<char>> gridPart1(height, lines), gridPart2(height, lines);
     // Set the sand start point to a '+'
     // Process all the paths and construct the map
-    processPaths(limits, grid);
-    printf("Total sand particles = %i\n", fillGrid(limits, grid));
+    processPaths(limits, gridPart1);
+    processPaths(limits, gridPart2);
+    printf("Total sand particles = %i\n", fillGrid(limits, gridPart1));
+    printf("Total sand particles = %i\n", fillGrid(limits, gridPart2, true));
+    printGrid(limits, gridPart2);
     return 0;
 }
