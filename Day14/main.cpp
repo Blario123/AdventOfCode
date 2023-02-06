@@ -102,11 +102,21 @@ void processLine(std::string &s) {
     paths.emplace_back(rPath);
 }
 
+enum MoveStatus {
+    Left,
+    Right,
+    Down,
+    None,
+    Edge
+};
+
+std::vector<std::string> moveStatusNames = {"Left", "Right", "Down", "None", "Edge"};
+
 // false for left, true for right
-void addExtraLine(bool side, std::vector<std::vector<char>> &v, Limits &l) {
-    if(side) {
+void addExtraLine(const MoveStatus &m, std::vector<std::vector<char>> &v, Limits &l) {
+    if(m == Right) {
         l.right++;
-        for(auto i: v) {
+        for(auto &i: v) {
             i.push_back('.');
         }
     } else {
@@ -127,6 +137,31 @@ void printGrid(Limits &l, std::vector<std::vector<char>> &v) {
     }
 }
 
+
+MoveStatus canMove(std::vector<std::vector<char>> &v, int x, std::size_t y) {
+    char &pos = v[y][x];
+    if(x == 0 || x == v[0].size()) {
+        if(pos == '.') {
+            return Down;
+        }
+        return Edge;
+    }
+    char &lPos = v[y][x - 1];
+    char &rPos = v[y][x + 1];
+    // If the sand has fallen on to a solid piece, check left then right
+    if(pos == 'o' || pos == '#') {
+        if(lPos == '.') {
+            return Left;
+        } else if(rPos == '.') {
+            return Right;
+        }
+    }
+    if(pos == '.') {
+        return Down;
+    }
+    return None;
+}
+
 int fillGrid(Limits &l, std::vector<std::vector<char>> &v, bool floor = false) {
     int sandCount = 0;
     while(true) {
@@ -137,59 +172,38 @@ int fillGrid(Limits &l, std::vector<std::vector<char>> &v, bool floor = false) {
         // Use atRest to detect when to add a new piece of sand, once it is stationary, break the while loop
         bool atRest = false;
         while(!atRest) {
-            for(int i = 1; i < v.size(); i++) {
-                // Get a reference to the characters at the previous point, the current point, and one left and right of the current point
-                // These are used to detect for wall/sand/air
-                char &prevPos = v[i - 1][hzPos];
-                char &pos = v[i][hzPos];
-                char &leftPos = v[i][hzPos - 1];
-                char &rightPos = v[i][hzPos + 1];
-                // If the sand reaches the left edge and there is no possible move right, it falls into the abyss
-                if(hzPos == 0) {
-                    if(rightPos != '.' && !floor) {
-                        prevPos = 'X';
-                        return sandCount;
-                    } else if(floor) {
-                        addExtraLine(false, v, l);
-                    }
-                // If the sand reaches the right edge and there is no possible move left, it falls into the abyss
-                } else if(hzPos == v[0].size()) {
-                    if(leftPos != '.' && !floor) {
-                        prevPos = 'X';
-                        return sandCount;
-                    } else if(floor) {
-                        addExtraLine(true, v, l);
-                    }
-                }
-                // If the position is air, and it is free, it can be moved into
-                // If the y value of pos is the size of the vector, it is at the floor
-                if(pos == '.') {
-                    if(i == v.size() - 1 && !floor) {
-                        prevPos = '.';
-                        pos = 'X';
-                        return sandCount;
-                    } else if(floor) {
-                    }
-                    prevPos = '.';
-                    pos = 'o';
-                // If the position is either wall or sand, detect if there is a free
-                // position to the left, then the right, otherwise it is at rest
-                } else if(pos == '#' || pos == 'o') {
-                    if(i == 1) {
-                        return sandCount;
-                    }
-                    if(leftPos == '.') {
-                        prevPos = '.';
-                        leftPos = 'o';
+            bool firstPass = true;
+            for(std::size_t i = 1; i < v.size(); i++) {
+                MoveStatus status = canMove(v, hzPos, i);
+                printf("Status = %s\n", moveStatusNames[status].c_str());
+                switch(status) {
+                    case Left:
                         hzPos--;
-                    } else if(rightPos == '.') {
-                        prevPos = '.';
-                        rightPos = 'o';
-                        hzPos++;
-                    } else {
-                        atRest = true;
                         break;
-                    }
+                    case Right:
+                        hzPos++;
+                        break;
+                    case Down:
+                        break;
+                    case None:
+                        v[i - 1][hzPos] = 'o';
+                        atRest = true;
+                        i = v.size();
+                        break;
+                    case Edge:
+                        if(floor && firstPass) {
+                            firstPass = false;
+                            if(hzPos == 0) {
+                                addExtraLine(Left, v, l);
+                                l.left--;
+                            } else {
+                                addExtraLine(Right, v, l);
+                                l.right++;
+                            }
+                        } else {
+                            return sandCount;
+                        }
+                        break;
                 }
             }
             // Iterate the sandCount to denote how many have been placed.
@@ -230,7 +244,7 @@ int main(int argc, char *argv[]) {
     // Construct the gridPart1 consisting of std::vector<char> as horizontal elements
     // by the height of the gridPart1
     std::vector<char> lines(width, '.');
-    std::vector<std::vector<char>> gridPart1(height, lines), gridPart2(height, lines);
+    std::vector<std::vector<char>> gridPart1(height, lines), gridPart2(height + 2, lines);
     // Set the sand start point to a '+'
     // Process all the paths and construct the map
     processPaths(limits, gridPart1);
