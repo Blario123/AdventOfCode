@@ -22,6 +22,7 @@ struct Limits {
 };
 
 std::vector<RockPath> paths;
+Limits l;
 
 Move createMove(const std::string &s) {
     // Split the string of the move into it's x and y constituents
@@ -30,8 +31,9 @@ Move createMove(const std::string &s) {
     return {std::stoi(s.substr(0, commaPos++)), std::stoi(s.substr(commaPos, s.size() - commaPos))};
 }
 
-Limits calculateLimits() {
-    Limits l;
+void calculateLimits() {
+    // Allocate the lowest and highest x values to the left and right limit
+    // Allocate the highest y value to the down limit
     for(const auto& i: paths) {
         for(const auto &j: i.path) {
             if(j.x < l.left) {
@@ -44,10 +46,9 @@ Limits calculateLimits() {
             }
         }
     }
-    return l;
 }
 
-void processPaths(Limits &l, std::vector<std::vector<char>> &g) {
+void processPaths(std::vector<std::vector<char>> &g) {
     for(const auto &i: paths) {
         std::pair<int, int> pos = {0, 0};
         for(int j = 1; j < i.path.size(); j++) {
@@ -110,106 +111,131 @@ enum MoveStatus {
     Edge
 };
 
-std::vector<std::string> moveStatusNames = {"Left", "Right", "Down", "None", "Edge"};
-
 // false for left, true for right
-void addExtraLine(const MoveStatus &m, std::vector<std::vector<char>> &v, Limits &l) {
-    if(m == Right) {
-        l.right++;
-        for(auto &i: v) {
-            i.push_back('.');
-        }
-    } else {
+void addExtraLine(const MoveStatus &m, std::vector<std::vector<char>> &v, bool &f) {
+    // If the edge is reached on the left, decrease the left limit and insert at the beginning of the vector a new '.'
+    if(m == Left) {
         l.left--;
         for(auto &i: v) {
+            if(i == v.back()) {
+                continue;
+            }
             i.insert(i.begin(), '.');
         }
-    }
-}
-
-void printGrid(Limits &l, std::vector<std::vector<char>> &v) {
-    v[0][500 - l.left] = '+';
-    for(const auto& i: v) {
-        for(const auto &j: i) {
-            printf("%c", j);
+    // If the edge is reached on the right, increase the right limit and insert at the end of the vector a new '.'
+    } else if(m == Right) {
+        l.right++;
+        for(auto &i: v) {
+            if(i == v.back()) {
+                continue;
+            }
+            i.push_back('.');
         }
-        printf("\n");
+    }
+    // If part 2 is running, f = true, insert a '#' the end of the vector
+    if(f) {
+        v.back().push_back('#');
     }
 }
 
-
-MoveStatus canMove(std::vector<std::vector<char>> &v, int x, std::size_t y) {
+MoveStatus canMove(std::vector<std::vector<char>> &v, int x, std::size_t y, bool &f) {
+    // Get a reference to the character at the current x and y position
     char &pos = v[y][x];
-    if(x == 0 || x == v[0].size()) {
+    // If x is at either edge, determine if a move can be made down, or return Edge
+    if(x == 0 || x == v[0].size() - 1) {
         if(pos == '.') {
             return Down;
         }
         return Edge;
     }
+    // If x lies within the limits, get a references of the left and right of the current position
     char &lPos = v[y][x - 1];
     char &rPos = v[y][x + 1];
-    // If the sand has fallen on to a solid piece, check left then right
+    // If the sand has fallen on to a solid piece
     if(pos == 'o' || pos == '#') {
+        // If the vertical limit has been reached and the floor is set, there is no move
+        if(y == v.size() - 1 && f) {
+            return None;
+        }
+        // Check the left position for an air gap, if so, return Left
         if(lPos == '.') {
             return Left;
+        // Check the right position for an air gap, if so, return Right
         } else if(rPos == '.') {
             return Right;
         }
     }
+    // If the position is an air gap
     if(pos == '.') {
+        // If the vertical limit has been reached and the floor is not set, the edge has been reached
+        if(y == v.size() - 1 && !f) {
+            return Edge;
+        }
         return Down;
     }
+    // No other condition is met, assume that there is no move
     return None;
 }
 
-int fillGrid(Limits &l, std::vector<std::vector<char>> &v, bool floor = false) {
+int fillGrid(std::vector<std::vector<char>> &v, bool floor = false) {
     int sandCount = 0;
     while(true) {
         // Add a new sand element to the grid at the '+' position
         int hzPos = 500 - l.left;
         // Set the character at the position to 'o' to denote the falling sand
         v[0][hzPos] = 'o';
-        // Use atRest to detect when to add a new piece of sand, once it is stationary, break the while loop
-        bool atRest = false;
-        while(!atRest) {
-            bool firstPass = true;
-            for(std::size_t i = 1; i < v.size(); i++) {
-                MoveStatus status = canMove(v, hzPos, i);
-                printf("Status = %s\n", moveStatusNames[status].c_str());
-                switch(status) {
-                    case Left:
-                        hzPos--;
-                        break;
-                    case Right:
-                        hzPos++;
-                        break;
-                    case Down:
-                        break;
-                    case None:
-                        v[i - 1][hzPos] = 'o';
-                        atRest = true;
-                        i = v.size();
-                        break;
-                    case Edge:
-                        if(floor && firstPass) {
-                            firstPass = false;
-                            if(hzPos == 0) {
-                                addExtraLine(Left, v, l);
-                                l.left--;
-                            } else {
-                                addExtraLine(Right, v, l);
-                                l.right++;
-                            }
+        bool firstPass = true;
+        for(std::size_t i = 1; i < v.size(); i++) {
+            // Get the status of the current position
+            MoveStatus status = canMove(v, hzPos, i, floor);
+            switch(status) {
+                // If a move is possible left, decrease the hzPos
+                case Left:
+                    hzPos--;
+                    break;
+                // If a move is possible right, increase the hzPos
+                case Right:
+                    hzPos++;
+                    break;
+                // If a move is possible down, do nothing
+                case Down:
+                    break;
+                // If no move is available
+                case None:
+                    // Set the previous position to a 'o' to ensure the sand is calculated correctly
+                    v[i - 1][hzPos] = 'o';
+                    // If the y position is 1 and the floor is set, return the count
+                    if(i == 1 && floor) {
+                        return sandCount;
+                    }
+                    // Set i to the size of the vector to stop the loop once there is no move
+                    i = v.size();
+                    break;
+                // If an edge has been found and floor is not set, return the count
+                case Edge:
+                    if(!floor) {
+                        return sandCount;
+                    }
+                    // If this is the first time an edge has been found in a sands travel,
+                    // add an extra line to the left if the hzPos is 0 or to the right if not 0
+                    // i is also decremented to allow the new path to be followed
+                    if(firstPass) {
+                        firstPass = false;
+                        i--;
+                        if(hzPos == 0) {
+                            addExtraLine(Left, v, floor);
+                            // If a new line is added to the left, the hzPos needs to be incremented
+                            // to allow the access of the vector to be in the correct place
+                            hzPos++;
                         } else {
-                            return sandCount;
+                            addExtraLine(Right, v, floor);
                         }
-                        break;
-                }
+                    }
+                    break;
             }
-            // Iterate the sandCount to denote how many have been placed.
-            printGrid(l, v);
-            sandCount++;
         }
+        // Iterate the sandCount to denote how many have been placed.
+        sandCount++;
     }
 }
 
@@ -236,21 +262,20 @@ int main(int argc, char *argv[]) {
         processLine(temp);
     }
     // Determine the left, right and down limits
-    Limits limits = calculateLimits();
+    calculateLimits();
     // Calculate the width and height to construct a gridPart1
     // Add 1 to allow for the 0th element
-    int width = (limits.right - limits.left) + 1;
-    int height = limits.down + 1;
+    int width = (l.right - l.left) + 1;
+    int height = l.down + 1;
     // Construct the gridPart1 consisting of std::vector<char> as horizontal elements
     // by the height of the gridPart1
     std::vector<char> lines(width, '.');
-    std::vector<std::vector<char>> gridPart1(height, lines), gridPart2(height + 2, lines);
-    // Set the sand start point to a '+'
+    std::vector<std::vector<char>> gridPart1(height, lines), gridPart2(height + 1, lines);
+    gridPart2.emplace_back(width, '#');
     // Process all the paths and construct the map
-    processPaths(limits, gridPart1);
-    processPaths(limits, gridPart2);
-    printf("Total sand particles = %i\n", fillGrid(limits, gridPart1));
-    printf("Total sand particles = %i\n", fillGrid(limits, gridPart2, true));
-    printGrid(limits, gridPart2);
+    processPaths(gridPart1);
+    processPaths(gridPart2);
+    printf("Total sand particles before falling into void = %i\n", fillGrid(gridPart1));
+    printf("Total sand particles to reach the top = %i\n", fillGrid(gridPart2, true));
     return 0;
 }
