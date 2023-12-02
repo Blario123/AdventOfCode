@@ -24,15 +24,19 @@ int main(int argc, char** argv) {
         while(c != EOF) {
             // Set the position of the character in the input to the same in line.
             line[pos++] = c;
-            // If c is a newline, parse the input and then clear the line array.
-            if(c == '\n') {
-                // Reinterpret the line array to change the words to integers.
-                for(size_t i = 0; i < 9; i++) {
-                    char *found = strstr(line, words[i]);
-                    if(found != NULL) {
-                        printf("%d\n", (int) (found - line));
+            // If c is a newline, parse the input and then clear the line array.           
+            // Reinterpret the line array to change the words to integers.
+            for(size_t i = 0; i < 9; i++) {
+                char *found = strstr(line, words[i]);
+                if(found != NULL) {
+                    line[found - line] = i + '1';
+                    for(int j = 1; j < strlen(words[i]) - 1; j++) {
+                        line[pos + j] = 'a';
                     }
+                    // printf("Position: %d, length: %lu\n", (int) (found - line), strlen(words[i]));
                 }
+            }
+            if(c == '\n') {
                 // Shift pos back 1 to represent the current data.
                 pos--;
                 // Parse the contents of line.
@@ -51,6 +55,7 @@ int main(int argc, char** argv) {
                         break;
                     }
                 }
+                printf("Value = %d\n", value);
                 count += value;
                 // Set the line position back to 0;
                 pos = 0;
