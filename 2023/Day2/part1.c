@@ -28,7 +28,6 @@ int main(int argc, char** argv) {
             line[pos++] = c;
             if(c == '\n') {
                 game++;
-                printf("game: %d\n", game);
                 pos--;
                 char* colon = strstr(line, ":");
                 struct Round r = {0, 0, 0};
@@ -46,7 +45,6 @@ int main(int argc, char** argv) {
                     }
                     if(cur == ' ') {
                         if(temp > 0) {
-                            printf("%c\n", line[i + 1]);
                             switch(line[i + 1]) {
                                 case 'r':
                                     r.r = temp;
@@ -62,24 +60,20 @@ int main(int argc, char** argv) {
                         }
                     }
                     if(cur == ';' || i == pos - 1) {
-                        printf("r: %d, g: %d, b: %d\n", r.r, r.g, r.b);
                         if(r.r > 12 || r.g > 13 || r.b > 14) {
-                            printf("invalid\n");
                             isValid = false;
                         }
                     }
                 }
                 if(isValid) {
-                    printf("Game %d is valid.\n", game);
                     count += game;
                 }
-                printf("\n");
                 pos = 0;
                 memset(&line, 0x00, 1000);
             }
             c = fgetc(input);
         }
-        printf("%d\n", count);
+        printf("Sum of the IDs: %d\n", count);
     } else {
         printf("No file given.\n");
         return 1;
