@@ -4,8 +4,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-                // printf("%d, %d, %d, %d, %d\n", tempHand.cardCount[0], tempHand.cardCount[1], tempHand.cardCount[2], tempHand.cardCount[3], tempHand.cardCount[4]);
-
 int compare(const void* a, const void* b) {
     int int_a = *((int*)a);
     int int_b = *((int*)b);
@@ -18,12 +16,14 @@ int compare(const void* a, const void* b) {
     }
 }
 
+char line[1000];
+size_t linePos = 0;
+
 char deck[13] = {'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'};
 
 int deckIndex(const char c) {
     for(int i = 0; i < 13; i++) {
         if(deck[i] == c) {
-            // printf("Found %c at index %d\n", c, i);
             return i;
         }
     }
@@ -40,6 +40,60 @@ struct Hand {
 struct Hand hands[1100] = {0};
 uint handCount = 0;
 
+void parseLine(const char* l, size_t length) {
+    struct Hand tempHand = {{0}, {0}, 0, 0};
+    bool preSpace = true;
+    int cardsDealt = 0;
+    int temp = 0;
+    int cardsDealtCount = 0;
+    if(length == 1 || l[0] == '\n') {
+        return;
+    }
+    for(int i = 0; i < length; i++) {
+        if(l[i] == '\n') {
+        tempHand.wager = temp;
+        for(int i = 0; i < 13; i++) {
+            int t = 0;
+            for(int j = 0; j < 5; j++) {
+                if(tempHand.cards[j] == deck[i]) {
+                    t++;
+                }
+            }
+            if(t > 0) {
+                tempHand.cardCount[cardsDealtCount++] = t;
+                t = 0;
+            }
+        }
+        qsort(tempHand.cardCount, 5, sizeof(int), compare);
+        hands[handCount++] = tempHand;
+        cardsDealt = 0;
+        cardsDealtCount = 0;
+        tempHand.wager = 0;
+        tempHand.score = 0;
+        temp = 0;
+        preSpace = true;
+        memset(tempHand.cards, 0, 5);
+        memset(tempHand.cardCount, 0, 5);
+        }
+        if(l[i] == ' ') {
+            preSpace = false;
+        }
+        if(l[i] != ' ' && l[i] != '\n') {
+            char c = l[i];
+            if(preSpace) {
+                tempHand.cards[cardsDealt++] = c;
+            } else {
+                if(temp > 0) {
+                    temp *= 10;
+                    temp += atoi(&c);
+                } else {
+                    temp = atoi(&c);
+                }
+            }
+        }
+    }
+}
+
 int main(int argc, char** argv) {
     if(argc > 1) {
         FILE* input = fopen(argv[1], "r");
@@ -48,50 +102,12 @@ int main(int argc, char** argv) {
             return 1;
         }
         char c = fgetc(input);
-        struct Hand tempHand = {{0}, {0}, 0};
-        bool preSpace = true;
-        int cardsDealt = 0;
-        int temp = 0;
-        int cardsDealtCount = 0;
         while(c != EOF) {
+            line[linePos++] = c;
             if(c == '\n') {
-                tempHand.wager = temp;
-                for(int i = 0; i < 13; i++) {
-                    int t = 0;
-                    for(int j = 0; j < 5; j++) {
-                        if(tempHand.cards[j] == deck[i]) {
-                            t++;
-                        }
-                    }
-                    if(t > 0) {
-                        tempHand.cardCount[cardsDealtCount++] = t;
-                        t = 0;
-                    }
-                }
-                qsort(tempHand.cardCount, 5, sizeof(int), compare);
-                hands[handCount++] = tempHand;
-                cardsDealt = 0;
-                cardsDealtCount = 0;
-                tempHand.wager = 0;
-                temp = 0;
-                preSpace = true;
-                memset(tempHand.cards, 0x00, 5 * sizeof(int));
-                memset(tempHand.cardCount, 0x00, 5 * sizeof(int));
-            }
-            if(c == ' ') {
-                preSpace = false;
-            }
-            if((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z')) {
-                if(preSpace) {
-                    tempHand.cards[cardsDealt++] = c;
-                } else {
-                    if(temp > 0) {
-                        temp *= 10;
-                        temp += atoi(&c);
-                    } else {
-                        temp = atoi(&c);
-                    }
-                }
+                parseLine(line, linePos);
+                memset(line, 0, 1000 * sizeof(char));
+                linePos = 0;
             }
             c = fgetc(input);
         }
@@ -131,26 +147,23 @@ int main(int argc, char** argv) {
                 bool toSwap = false;
                 struct Hand* h1 = &hands[i-1];
                 struct Hand* h2 = &hands[i];
-                // If the score is the same, determine on first, if not second, if not third... card.
-                // printf("Hand %d's score is %d. First card is %c\n", i-1, h1->score, h1->cards[0]);
-                // printf("Hand %d's score is %d. First card is %c\n", i, h2->score, h2->cards[0]);
                 if(h1->score == h2->score) {
                     for(int j = 0; j < 5; j++) {
-                        // printf("Score matches. Checking card[%d]\t%c,%c\n", i, h1->cards[j], h2->cards[j]);
-                        if(deckIndex(h1->cards[j]) > deckIndex(h2->cards[j])) {
+                        int card1 = deckIndex(h1->cards[j]);
+                        int card2 = deckIndex(h2->cards[j]);
+                        if(card1 > card2) {
                             toSwap = true;
                             break;
-                        } else if(deckIndex(h1->cards[j]) < deckIndex(h2->cards[j])) {
+                        }
+                        if(card1 < card2) {
                             break;
                         }
-                        // printf("Cards matched. Moving onto card number %d\n", j + 1);
                     }
                 }
                 if(h1->score > h2->score) {
                     toSwap = true;
                 }
                 if(toSwap) {
-                    // printf("Swapping %d and %d\n", i-1, i);
                     struct Hand temp = hands[i-1];
                     hands[i-1] = hands[i];
                     hands[i] = temp;
@@ -158,14 +171,12 @@ int main(int argc, char** argv) {
                     correct++;
                 }
             }
-            printf("\r%.3f%% Correct", (float) 100 * correct/(handCount-2));
-            if(correct == handCount - 2) {
+            if(correct == handCount - 1) {
                 sorted = true;
             }
         }
         unsigned long long total = 0;
         for(int i = 0; i < handCount; i++) {
-            printf("%d * %d\tWager multiplied = %llu\tTotal = %llu\n", handCount - i, hands[i].wager, (unsigned long long) ((handCount - i) * hands[i].wager), total);
             total += ((handCount - i) * hands[i].wager);
         }
         printf("Total score = %llu\n", total);
