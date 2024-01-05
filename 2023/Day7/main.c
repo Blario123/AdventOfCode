@@ -20,6 +20,16 @@ int compare(const void* a, const void* b) {
 
 char deck[13] = {'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'};
 
+int deckIndex(const char c) {
+    for(int i = 0; i < 13; i++) {
+        if(deck[i] == c) {
+            // printf("Found %c at index %d\n", c, i);
+            return i;
+        }
+    }
+    return -1;
+}
+
 struct Hand {
     char cards[5];
     uint cardCount[5];
@@ -27,7 +37,7 @@ struct Hand {
     int score;
 };
 
-struct Hand hands[1000] = {0};
+struct Hand hands[1100] = {0};
 uint handCount = 0;
 
 int main(int argc, char** argv) {
@@ -111,13 +121,54 @@ int main(int argc, char** argv) {
                 case 1:
                     h->score = 6;
                     break;
-                default:
-                    break;
             }
-            int* ranking = malloc(handCount * sizeof(int));
-            memset(ranking, 0, handCount * sizeof(int)); 
-            free(ranking);
         }
+        bool sorted = false;
+        int goes = 0;
+        while(!sorted) {
+            int correct = 0;
+            for(int i = 1; i < handCount; i++) {
+                bool toSwap = false;
+                struct Hand* h1 = &hands[i-1];
+                struct Hand* h2 = &hands[i];
+                // If the score is the same, determine on first, if not second, if not third... card.
+                // printf("Hand %d's score is %d. First card is %c\n", i-1, h1->score, h1->cards[0]);
+                // printf("Hand %d's score is %d. First card is %c\n", i, h2->score, h2->cards[0]);
+                if(h1->score == h2->score) {
+                    for(int j = 0; j < 5; j++) {
+                        // printf("Score matches. Checking card[%d]\t%c,%c\n", i, h1->cards[j], h2->cards[j]);
+                        if(deckIndex(h1->cards[j]) > deckIndex(h2->cards[j])) {
+                            toSwap = true;
+                            break;
+                        } else if(deckIndex(h1->cards[j]) < deckIndex(h2->cards[j])) {
+                            break;
+                        }
+                        // printf("Cards matched. Moving onto card number %d\n", j + 1);
+                    }
+                }
+                if(h1->score > h2->score) {
+                    toSwap = true;
+                }
+                if(toSwap) {
+                    // printf("Swapping %d and %d\n", i-1, i);
+                    struct Hand temp = hands[i-1];
+                    hands[i-1] = hands[i];
+                    hands[i] = temp;
+                } else {
+                    correct++;
+                }
+            }
+            printf("\r%.3f%% Correct", (float) 100 * correct/(handCount-2));
+            if(correct == handCount - 2) {
+                sorted = true;
+            }
+        }
+        unsigned long long total = 0;
+        for(int i = 0; i < handCount; i++) {
+            printf("%d * %d\tWager multiplied = %llu\tTotal = %llu\n", handCount - i, hands[i].wager, (unsigned long long) ((handCount - i) * hands[i].wager), total);
+            total += ((handCount - i) * hands[i].wager);
+        }
+        printf("Total score = %llu\n", total);
     } else {
         printf("No file given.\n");
         return 1;
