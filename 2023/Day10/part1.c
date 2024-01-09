@@ -37,7 +37,6 @@ void parseLine(const char* l, size_t length) {
     xMax = length - 1;
     map[y] = malloc(xMax * sizeof(char));
     memcpy(map[y], l, xMax);
-    printf("Line is %s\n", map[y]);
     if(y == yMax - 1) {
         yMax += 2;
         map = realloc(map, yMax * sizeof(char*));
@@ -66,64 +65,121 @@ int main(int argc, char** argv) {
         bool end = false;
         int distance = 0;
         bool deadend = false;
+        direction startDir = 0;
         direction dir = 0;
+        direction prevDir = startDir;
         char current = 'S';
         int x_ = startX;
         int y_ = startY;
-        char previous;
+        char previous = '.';
         while(!end) {
+            deadend = false;
+            prevDir = dir;
             switch(dir) {
                 case North:
-                    current = map[--y_][x_];
+                    if(y_ == 0) {
+                        deadend = true;
+                        break;
+                    }
+                    --y_;
                     break;
                 case East:
-                    current = map[y_][++x_];
+                    if(x_ == xMax) {
+                        deadend = true;
+                        break;
+                    }
+                    ++x_;
                     break;
                 case South:
-                    current = map[++y_][x_];
+                    if(y_ == yMax) {
+                        deadend = true;
+                        break;
+                    }
+                    ++y_;
                     break;
                 case West:
-                    current = map[y_][--x_];
+                    if(x_ == 0) {
+                        deadend = true;
+                        break;
+                    }
+                    --x_;
                     break;
             }
+            if(prevDir > 4) {
+                return -1;
+            }
+            current = map[y_][x_];
             switch(current) {
                 case '-':
-                    if(previous == 'F' || previous == 'L') {
-                        
-                    } else if(previous == 'J' || previous == '7') {
-                    
+                    if(prevDir == East || prevDir == West) {
+                        dir = prevDir;
+                    } else {
+                        deadend = true;
                     }
                     break;
                 case '7':
+                    if(prevDir == North) {
+                        dir = West;
+                    } else if(prevDir == East) {
+                        dir = South;
+                    } else {
+                        deadend = true;
+                    }
                     break;
                 case '|':
-                    if(previous == 'F' || previous == '7') {
-                    } else if(previous == 'J' || previous == 'L') {
+                    if(prevDir == North || prevDir == South) {
+                        dir = prevDir;
+                    } else {
+                        deadend = true;
                     }
                     break;
                 case 'J':
+                    if(prevDir == East) {
+                        dir = North;
+                    } else if(prevDir == South) {
+                        dir = West;
+                    } else {
+                        deadend = true;
+                    }
                     break;
                 case 'L':
+                    if(prevDir == South) {
+                        dir = East;
+                    } else if(prevDir == West) {
+                        dir = North;
+                    } else {
+                        deadend = true;
+                    }
                     break;
                 case 'F':
+                    if(prevDir == West) {
+                        dir = South;
+                    } else if(prevDir == North) {
+                        dir = East;
+                    } else {
+                        deadend = true;
+                    }
+                    break;
+                case '.':
+                    deadend = true;
                     break;
             }
-            if(current == '.') {
-                deadend = true;
-            }
+            distance++;
             if(deadend) {
                 x_ = startX;
-                y_ = startX;
+                y_ = startY;
                 current = 'S';
+                previous = '.';
                 distance = 0;
                 deadend = false;
-                dir++;
+                startDir++;
+                dir = startDir;
             }
             if(current == 'S' && distance > 0) {
                 end = true;
             }
         }
-        printf("X = %d, Y = %d, %c\n", startX, startY, map[startY][startX]);
+        printf("Max path length is %d\n", distance / 2);
     } else {
         printf("No file given.\n");
         return 1;
