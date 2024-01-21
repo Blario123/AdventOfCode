@@ -23,24 +23,40 @@ typedef enum {
     West
 } direction;
 
+typedef struct {
+    int x;
+    int y;
+} coord;
+
+void printfMap(void) {
+    for(int i = 0; i < y; i++) {
+        printf("%s\n", map[i]);
+    }
+}
+
 void parseLine(const char* l, size_t length) {
     // If the length of the line is 1, or the first character is a newline, return immediately as nothing is to be done.
     if(length == 1 || l[0] == '\n') {
         return;
     }
-    char* sPos = strstr(l, "S");
-    if(sPos != NULL) {
-        startY = y;
-        startX = sPos - l;
-    }
-    x = length - 1;
-    xMax = length - 1;
+    x = length + 1;
+    xMax = length + 2;
     map[y] = malloc(xMax * sizeof(char));
-    memcpy(map[y], l, xMax);
-    printf("Line is %s\n", map[y]);
+    memset(map[y], 0, xMax);
+    memcpy(map[y], l, length);
+    memmove(&map[y][1], &map[y][0], length * sizeof(char));
+    map[y][0] = '.';
+    map[y][x - 1] = '.';
+    map[y][xMax] = '\0';
+    printf("%s\n", map[y]);
     if(y == yMax - 1) {
         yMax += 2;
         map = realloc(map, yMax * sizeof(char*));
+    }
+    char* sPos = strstr(map[y], "S");
+    if(sPos != NULL) {
+        startY = y;
+        startX = sPos - map[y];
     }
     y++;
 }
@@ -73,49 +89,38 @@ int main(int argc, char** argv) {
         int x_ = startX;
         int y_ = startY;
         char previous = '.';
-        int northCount = 0;
-        int southCount = 0;
-        int eastCount = 0;
-        int westCount = 0;
+        coord* borderPoints = malloc(16384 * sizeof(coord));
+        int borderPointCount = 0;
         while(!end) {
             deadend = false;
             prevDir = dir;
-            printf("Attempting to move ");
             switch(dir) {
                 case North:
-                    printf("North");
                     if(y_ == 0) {
                         deadend = true;
                         break;
                     }
-                    northCount++;
                     --y_;
                     break;
                 case East:
-                    printf("East");
                     if(x_ == xMax) {
                         deadend = true;
                         break;
                     }
-                    eastCount++;
                     ++x_;
                     break;
                 case South:
-                    printf("South");
                     if(y_ == yMax) {
                         deadend = true;
                         break;
                     }
-                    southCount++;
                     ++y_;
                     break;
                 case West:
-                    printf("West");
                     if(x_ == 0) {
                         deadend = true;
                         break;
                     }
-                    westCount++;
                     --x_;
                     break;
             }
@@ -123,8 +128,6 @@ int main(int argc, char** argv) {
                 return -1;
             }
             current = map[y_][x_];
-            printf(" to %d,%d\n", x_, y_);
-            printf("current = %c prevDir = %d\n", current, prevDir);
             switch(current) {
                 case '-':
                     if(prevDir == East || prevDir == West) {
@@ -136,10 +139,8 @@ int main(int argc, char** argv) {
                 case '7':
                     if(prevDir == North) {
                         dir = West;
-                        northCount--;
                     } else if(prevDir == East) {
                         dir = South;
-                        eastCount--;
                     } else {
                         deadend = true;
                     }
@@ -154,10 +155,8 @@ int main(int argc, char** argv) {
                 case 'J':
                     if(prevDir == East) {
                         dir = North;
-                        eastCount--;
                     } else if(prevDir == South) {
                         dir = West;
-                        westCount--;
                     } else {
                         deadend = true;
                     }
@@ -165,10 +164,8 @@ int main(int argc, char** argv) {
                 case 'L':
                     if(prevDir == South) {
                         dir = East;
-                        southCount--;
                     } else if(prevDir == West) {
                         dir = North;
-                        westCount--;
                     } else {
                         deadend = true;
                     }
@@ -176,10 +173,8 @@ int main(int argc, char** argv) {
                 case 'F':
                     if(prevDir == West) {
                         dir = South;
-                        westCount--;
                     } else if(prevDir == North) {
                         dir = East;
-                        northCount--;
                     } else {
                         deadend = true;
                     }
@@ -188,31 +183,90 @@ int main(int argc, char** argv) {
                     deadend = true;
                     break;
             }
+            borderPoints[borderPointCount++] = (coord){x_, y_};
             distance++;
             if(deadend) {
-                printf("Deadend reached.\n");
                 x_ = startX;
                 y_ = startY;
-                northCount = 0;
-                southCount = 0;
-                eastCount = 0;
-                westCount = 0;
                 current = 'S';
                 previous = '.';
                 distance = 0;
                 deadend = false;
                 startDir++;
                 dir = startDir;
+                memset(borderPoints, 0, 16384 * sizeof(coord));
+                borderPointCount = 0;
             }
             if(current == 'S' && distance > 0) {
                 end = true;
             }
         }
-        printf("N = %d, S = %d, E = %d, W = %d\n", northCount, southCount, eastCount, westCount);
-        int deltaX = eastCount - westCount;
-        int deltaY = northCount - southCount;
-        printf("deltaX = %d, deltaY = %d\n", deltaX, deltaY);
-        printf("distance = %d, max path = %d\n", distance, distance / 2);
+        for(int i = 0; i < borderPointCount; i++) {
+            coord* c = &borderPoints[i];
+            map[c->y][c->x] = 'B';
+        }
+        free(borderPoints);
+        for(int i = 0; i < y; i++) {
+            map[i][0] = 'X';
+            map[i][x] = 'X';
+            for(int j = 0; j < x; j++) {
+                if(map[i][j] != 'B') {
+                    map[i][j] = '.';
+                    if(i == 0 || i == (y - 1)) {
+                        map[i][j] = 'X';
+                    }
+                }
+            }
+        }
+        bool finished = false;
+        map[0][0] = 'X';
+        while(!finished) {
+            int changes = 0;
+            for(int i = 0; i < y; i++) {
+                int u, d;
+                u = i == 0 ? 0 : -1;
+                d = i == (y - 1) ? 0 : 1;
+                for(int j = 0; j < x; j++) {
+                    int l, r;
+                    l = j == 0 ? 0 : -1;
+                    r = j == (x - 1) ? 0 : 1;
+                    // Ignore if the current char is 'X'. Check around any that are a '.'
+                    if(map[i][j] == '.') {
+                        bool isConnected = false;
+                        for(int ii = u; ii < (d + 1); ii++) {
+                            for(int jj = l; jj < (r + 1); jj++) {
+                                if(map[i + ii][j + jj] == 'X') {
+                                    isConnected = true;
+                                    break;
+                                }
+                            }
+                            if(isConnected) {
+                                break;
+                            }
+                        }
+                        if(isConnected) {
+                            changes++;
+                            map[i][j] = 'X';
+                        }
+                    }
+                }
+            }
+            if(changes == 0) {
+                finished = true;
+                break;
+            }
+        }
+        printfMap();
+        int count = 0;
+        for(int i = 0; i < y; i++) {
+            for(int j = 0; j < x; j++) {
+                if(map[i][j] == '.') {
+                    count++;
+                }
+            }
+        }
+        // Answer lies between 211 and 411
+        printf("Count = %d\n", count);
     } else {
         printf("No file given.\n");
         return 1;
