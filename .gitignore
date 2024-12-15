@@ -4,8 +4,6 @@ CMakeFiles/
 *.cmake
 */CMakeCache.txt
 CMakeCache.txt
-*/Makefile
-Makefile
 */.idea/
 .idea/
 */*.old
