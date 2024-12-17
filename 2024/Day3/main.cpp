@@ -1,12 +1,34 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 std::vector<std::string> contents;
 
 bool checkSubstring(const std::string &str) {
-    return false;
+    printf("Checking string \"%s\"\n", str.c_str());
+    if(str.find(' ') != std::string::npos) {
+        printf("Contains a space\n");
+        return false;
+    }
+    for(char i = 'a'; i < 'z'; i++) {
+        if(str.find(i) != std::string::npos) {
+            printf("Contains illegal characters\n");
+            return false;
+        }
+    }
+    int commaCount = 0;
+    size_t commaPos = 0;
+    while(commaPos != std::string::npos) {
+        commaCount++;
+        commaPos = str.find(',', commaPos + 1);
+    }
+    commaCount -= 1;
+    printf("%d\n", commaCount);
+    if(commaCount != std::string::npos && commaCount > 1) {
+        printf("Too many commas\n");
+        return false;
+    }
+    return true;
 }
 
 int multiplySubstring(const std::string &str) {
@@ -30,15 +52,17 @@ int main(int argc, char** argv) {
         }
         // Day 1 - Find and multiply
         size_t sz = 0;
-        size_t sz_ = 0;
         int sum = 0;
         for(auto &i: contents) {
+            size_t sz_ = 0;
             while(sz != std::string::npos) {
                 sz = i.find("mul(", sz_);
                 sz_ = sz + 4;
                 std::string mulStr = i.substr(sz_, i.find(")", sz_) - sz_);
                 if(checkSubstring(mulStr)) {
-                    sum += multiplySubstring(mulStr);
+                    // sum += multiplySubstring(mulStr);
+                } else {
+                    printf("Check failed\n");
                 }
             }
         }
