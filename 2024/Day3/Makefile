@@ -1,8 +1,8 @@
 all:
 	g++ main.cpp -o Day3
 
-test-example: all
+test: all
 	./Day3 example.txt
 
-test: all
+run: all
 	./Day3 input.txt
