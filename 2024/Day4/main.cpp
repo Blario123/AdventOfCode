@@ -10,63 +10,56 @@ std::vector<std::pair<int,int>> xPositions;
 int checkWord(const std::pair<int,int> &p) {
     int count = 0;
     std::string wordToCheck;
-    if(p.first < wordSearch[0].length() - 4) {
+    if(p.first < wordSearch[0].length() - 3) {
         wordToCheck = wordSearch[p.second].substr(p.first, 4);
         if(wordToCheck == "XMAS") {
-            printf("%s\n", wordToCheck.c_str());
 				count++;
         }
-        if(p.second < wordSearch.size() - 4) {
+        if(p.second < wordSearch.size() - 3) {
             for(int i = 0; i < 4; i++) {
                 wordToCheck[i] = wordSearch[p.second + i][p.first + i];
             }
             if(wordToCheck == "XMAS") {
-                printf("%s\n", wordToCheck.c_str());
 				count++;
             }
         }
-        if(p.second > 3) {
+        if(p.second >= 3) {
             for(int i = 0; i < 4; i++) {
                 wordToCheck[i] = wordSearch[p.second - i][p.first + i];
             }
             if(wordToCheck == "XMAS") {
-                printf("%s\n", wordToCheck.c_str());
 				count++;
             }
         }
     }
-    if(p.first > 4) {
+    if(p.first >= 3) {
         wordToCheck = wordSearch[p.second].substr(p.first - 3, 4);
         std::reverse(wordToCheck.begin(), wordToCheck.end());
         if(wordToCheck == "XMAS") {
-            printf("%s\n", wordToCheck.c_str());
-				count++;
+            count++;
         }
-        if(p.second < wordSearch.size() - 4) {
+        if(p.second < wordSearch.size() - 3) {
             for(int i = 0; i < 4; i++) {
                 wordToCheck[i] = wordSearch[p.second + i][p.first - i];
             }
             if(wordToCheck == "XMAS") {
-                printf("%s\n", wordToCheck.c_str());
 				count++;
             }
         }
-        if(p.second > 3) {
+        if(p.second >= 3) {
             for(int i = 0; i < 4; i++) {
                 wordToCheck[i] = wordSearch[p.second - i][p.first - i];
             }
             if(wordToCheck == "XMAS") {
-                printf("%s\n", wordToCheck.c_str());
 				count++;
             }
         }
     }
-    if(p.second < wordSearch.size() - 4) {
+    if(p.second < wordSearch.size() - 3) {
         for(int i = 0; i < 4; i++) {
             wordToCheck[i] = wordSearch[p.second + i][p.first];
         }
         if(wordToCheck == "XMAS") {
-            printf("%s\n", wordToCheck.c_str());
 				count++;
         }
     }
@@ -75,7 +68,6 @@ int checkWord(const std::pair<int,int> &p) {
             wordToCheck[i] = wordSearch[p.second - i][p.first];
         }
         if(wordToCheck == "XMAS") {
-            printf("%s\n", wordToCheck.c_str());
 				count++;
         }
     }
