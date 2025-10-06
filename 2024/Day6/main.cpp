@@ -3,8 +3,10 @@
 #include <string>
 #include <vector>
 #include <cmath>
-#include <format>
 #include <cstdarg>
+#include <thread>
+#include <mutex>
+#include <chrono>
 
 #ifdef GIF
     #include "gif.h"
@@ -16,13 +18,38 @@ typedef enum {
     W
 } Direction;
 
+struct Path {
+    explicit Path(std::vector<std::pair<int,int>> p_) : p(p_) {};
+    std::vector<std::pair<int,int>> p;
+    std::mutex m;
+    void set(std::vector<std::pair<int,int>> p_) {
+        p = p_;
+    }
+};
+
+struct Sum {
+    explicit Sum(int s) : sum(s) {};
+    int sum;
+    std::mutex m;
+    void set(int s) {
+        sum = s;
+    }
+};
+
 std::vector<std::string> map;
 std::vector<std::string> mapRaw;
 std::vector<std::pair<int,int>> path;
 std::pair<int,int> pos;
 std::pair<int,int> startPos;
 Direction direction = N;
+
 std::vector<std::pair<int,int>> prevPath;
+std::vector<std::thread> workers;
+
+Path t_p(path);
+Sum t_s(0);
+
+int sum = 0;
 
 int countVisited(const std::vector<std::string> &v) {
     int sum = 0;
@@ -57,6 +84,7 @@ void addPosToPath(const std::pair<int,int> &p) {
     if(!contains(path, p)) {
         path.emplace_back(p);
     }
+    printf("%d, %d\n", p.first, p.second);
 }
 
 void print(const char *str, ... ) {
@@ -93,6 +121,127 @@ void writeMapToGif(GifWriter &g, const std::vector<std::string> &v) {
     GifWriteFrame(&g, image, map[0].size(), map.size(), 10);
 }
 #endif
+
+void workerProcessMapBlock(int id) {
+    printf("Thread %d spawned.\n", id);
+    // Copy the map to local thread
+    std::vector<std::pair<int,int>> t_prevPath;
+    fflush(stdout);
+    while(1) {
+        std::vector<std::string> mapCopy = mapRaw;
+        std::unique_lock pathLock(t_p.m, std::defer_lock);
+        std::unique_lock sumLock(t_s.m, std::defer_lock);
+        // Stop the other threads from stealing the same element.
+        // If another thread is currently locking, wait until it can be unlocked.
+        while(!pathLock.try_lock()) {
+        }
+        if(t_p.p.size() == 0) {
+            // Allow the worker to exit.
+            pathLock.unlock();
+            break;
+        }
+        // Copy the first element off the array, and remove it.
+        std::pair<int,int> posCopy = t_p.p[0];
+        t_p.p.erase(t_p.p.begin());
+        // Allow the other threads to modify the vector.
+        pathLock.unlock();
+        std::this_thread::sleep_for(std::chrono::duration<int, std::ratio<1, 2>>());
+        mapCopy[posCopy.second][posCopy.first] = '#';
+        printf("Thread %d working on (%d, %d).\n", id, posCopy.first, posCopy.second);
+        // Process the loop.
+        Direction t_direction = N;
+        bool t_searching = true;
+        std::pair<int,int> t_pos = startPos;
+        int t_visitedDupes = 0; // Visited in a row..
+        // print("Placing block at %d,%d\n", i.first, i.second);
+        while(t_searching) {
+            char next;
+            switch(t_direction) {
+                case N:
+                    if(t_pos.second == 0) {
+                        t_searching = false;
+                        break;
+                    }
+                    next = mapCopy[t_pos.second - 1][t_pos.first];
+                    if(next == '#') {
+                        t_direction = E;
+                    } else {
+                        if(next == 'x') {
+                            t_visitedDupes++;
+                        }
+                        t_prevPath.insert(t_prevPath.begin(), t_pos);
+                        t_pos.second--;
+                    }
+                    break;
+                case E:
+                    if(t_pos.first == (mapCopy[0].size() - 1)) {
+                        t_searching = false;
+                        break;
+                    }
+                    next = mapCopy[t_pos.second][t_pos.first + 1];
+                    if(mapCopy[t_pos.second][t_pos.first + 1] == '#') {
+                        t_direction = S;
+                    } else {
+                        if(next == 'x') {
+                            t_visitedDupes++;
+                        }
+                        t_prevPath.insert(t_prevPath.begin(), t_pos);
+                        t_pos.first++;
+                    }
+                    break;
+                case S:
+                    if(t_pos.second == (mapCopy.size() - 1)) {
+                        t_searching = false;
+                        break;
+                    }
+                    next = mapCopy[t_pos.second + 1][t_pos.first];
+                    if(mapCopy[t_pos.second + 1][t_pos.first] == '#') {
+                        t_direction = W;
+                    } else {
+                        if(next == 'x') {
+                            t_visitedDupes++;
+                        }
+                        t_prevPath.insert(t_prevPath.begin(), t_pos);
+                        t_pos.second++;
+                    }
+                    break;
+                case W:
+                    if(t_pos.first == 0) {
+                        t_searching = false;
+                        break;
+                    }
+                    next = mapCopy[t_pos.second][t_pos.first - 1];
+                    if(mapCopy[t_pos.second][t_pos.first - 1] == '#') {
+                        t_direction = N;
+                    } else {
+                        if(next == 'x') {
+                            t_visitedDupes++;
+                        }
+                        t_prevPath.insert(t_prevPath.begin(), t_pos);
+                        t_pos.first--;
+                    }
+                    break;
+                }
+                int repeatLimit = 3;
+                if(t_prevPath.size() > repeatLimit) {
+                    t_prevPath.erase(t_prevPath.begin() + repeatLimit, t_prevPath.end());
+                    // Check that the path does not repeat back on itself
+                }
+                mapCopy[t_pos.second][t_pos.first] = 'x';
+                if(t_visitedDupes == path.size()) {// Ensure that the loop is sufficient length
+                    break;                // and not back on itself
+                }
+            }
+            t_prevPath.resize(0);
+            if(t_searching) { // Ensure that the puzzle did not exit due to map edge.
+                while(!sumLock.try_lock()) {
+                }
+                sum += 1;
+                sumLock.unlock();
+            }
+    }
+    printf("Thread %d terminating.\n", id);
+}
 
 int main(int argc, char** argv) {
     if(argc > 1) {
@@ -169,120 +318,22 @@ int main(int argc, char** argv) {
         }
         printf("Visited positions = %d\n", countVisited(map));
         // Day 2 - Looking for possible loops with an extra obstacle placed.
-        int sum = 0;
-        int ii = 0;
-        for(auto &i: path) {
-            map = mapRaw; // Reset the map for processing
-            map[i.second][i.first] = '#';
-            direction = N;
-            searching = true;
-            pos = startPos;
-            int visitedDupes = 0; // Visited in a row..
-            print("Placing block at %d,%d\n", i.first, i.second);
-#ifdef GIF
-            GifWriter g;
-            GifBegin(&g, std::format("{}{}.gif", argv[1], ii++).c_str(), map[0].size(), map.size(), 10);
-#endif
-            while(searching) {
-                char next;
-                switch(direction) {
-                    case N:
-                        if(pos.second == 0) {
-                            searching = false;
-                            break;
-                        }
-                        next = map[pos.second - 1][pos.first];
-                        if(next == '#') {
-                            direction = E;
-                            print("Direction: E\n");
-                        } else {
-                            if(next == 'x') {
-                                visitedDupes++;
-                            }
-                            prevPath.insert(prevPath.begin(), pos);
-                            pos.second--;
-                        }
-                        break;
-                    case E:
-                        if(pos.first == (map[0].size() - 1)) {
-                            searching = false;
-                            break;
-                        }
-                        next = map[pos.second][pos.first + 1];
-                        if(map[pos.second][pos.first + 1] == '#') {
-                            direction = S;
-                            print("Direction: S\n");
-                        } else {
-                            if(next == 'x') {
-                                visitedDupes++;
-                            }
-                            prevPath.insert(prevPath.begin(), pos);
-                            pos.first++;
-                        }
-                        break;
-                    case S:
-                        if(pos.second == (map.size() - 1)) {
-                            searching = false;
-                            break;
-                        }
-                        next = map[pos.second + 1][pos.first];
-                        if(map[pos.second + 1][pos.first] == '#') {
-                            direction = W;
-                            print("Direction: W\n");
-                        } else {
-                            if(next == 'x') {
-                                visitedDupes++;
-                            }
-                            prevPath.insert(prevPath.begin(), pos);
-                            pos.second++;
-                        }
-                        break;
-                    case W:
-                        if(pos.first == 0) {
-                            searching = false;
-                            break;
-                        }
-                        next = map[pos.second][pos.first - 1];
-                        if(map[pos.second][pos.first - 1] == '#') {
-                            direction = N;
-                            print("Direction: N\n");
-                        } else {
-                            if(next == 'x') {
-                                visitedDupes++;
-                            }
-                            prevPath.insert(prevPath.begin(), pos);
-                            pos.first--;
-                        }
-                        break;
-                }
-                int repeatLimit = 3;
-                if(prevPath.size() > repeatLimit) {
-                    prevPath.erase(prevPath.begin() + repeatLimit, prevPath.end());
-                    // Check that the path does not repeat back on itself
-                    print("Pos = %d,%d  prev = %d,%d  %d,%d  %d,%d\n", pos.first, pos.second, prevPath[0].first, prevPath[0].second, prevPath[1].first, prevPath[1].second, prevPath[2].first, prevPath[2].second);
-                    if(contains(prevPath, pos)) {
-                        print("Already visited\n");
-//                        searching = false;
-//                        break;
-                    }
-                }
-#ifdef GIF
-                writeMapToGif(g, map);
-#endif       
-                map[pos.second][pos.first] = 'x';
-                if(visitedDupes == path.size()) {// Ensure that the loop is sufficient length
-                    break;                // and not back on itself
-                }
-            }
-            prevPath.resize(0);
-            if(searching) { // Ensure that the puzzle did not exit due to map edge.
-                sum++;
-            }
-#ifdef GIF
-            GifEnd(&g);
-#endif
+        t_p.set(path);
+        t_s.set(sum);
+        int maxThreads = 8;
+        workers.resize(maxThreads);
+        for(int i = 0; i < maxThreads; i++) {
+            workers[i] = std::thread(workerProcessMapBlock, i);
         }
-        printf("Possible loops = %d\n", sum);
+        workers[0].join();
+        workers[1].join();
+        workers[2].join();
+        workers[3].join();
+        workers[4].join();
+        workers[5].join();
+        workers[6].join();
+        workers[7].join();
+        printf("Possible loops = %d\n", sum - 1); // 1 is removed to accommodate for an incorrect placement at the starting position of the guard.
     }
     return 0;
 }
