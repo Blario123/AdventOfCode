@@ -1,14 +1,17 @@
 #include <cstdio>
+#include <iostream>
 #include <fstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <cmath>
 
-int checkLine(int goal, const std::vector<int> &v) {
-    // Check all additions
+int checkLine(int goal, const std::vector<long> &v) {
+    int possPermutations = std::pow(2, v.size() - 1);
+    // Cheaper to check the addition and multiplication permutations immediately.
     int addSum = v[0];
     int mulSum = v[0];
-    for(int i = 0; i < v.size(); i++) {
+    for(int i = 1; i < v.size(); i++) {
         addSum += v[i];
         mulSum *= v[i];
     }
@@ -16,8 +19,26 @@ int checkLine(int goal, const std::vector<int> &v) {
         return goal;
     }
     // If neither worked, determine a mix of symbols
-    for(int i = 0; i < v.size(); i++) {
-        
+    int tried = 1;
+    while(tried != possPermutations - 1) {
+        int mixSum = v[0];
+        // 0b0 == +
+        // 0b1 == *
+        int mask = 0b1;
+        //std::string binRep = "";
+        for(int i = 1; i < v.size(); i++) {
+            if(tried & mask) {
+                mixSum *= v[i];
+            } else {
+                mixSum += v[i];
+            }
+            //binRep.append((tried & mask) ? "*" : "+");
+            mask = mask << 1;
+        }
+        if(mixSum == goal) {
+            return goal;
+        }
+        tried++;
     }
     return -1; 
 }
@@ -37,10 +58,18 @@ int main(int argc, char** argv) {
             sz = line.find(':');
             int g = std::stoi(line.substr(0, sz++).c_str());
             size_t sz_ = sz + 1;
-            std::vector<int> v;
+            std::vector<long> v;
             while(sz != std::string::npos) {
+                printf("%s\n", line.substr(sz_, std::string::npos).c_str());
                 sz = line.find(' ', sz_);
-                v.emplace_back(std::stoi(line.substr(sz_, sz).c_str()));
+                if(sz == std::string::npos) {
+                    printf("end of line found\n");
+                }
+                try {
+                    v.emplace_back(std::stol(line.substr(sz_, sz).c_str()));
+                } catch(const std::out_of_range& err) {
+                    std::cerr << "out of range: " << err.what();
+                }
                 sz_ = sz + 1;
             }
             int l = checkLine(g, v);

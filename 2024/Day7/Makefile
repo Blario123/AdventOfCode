@@ -1,5 +1,5 @@
 all:
-	g++ main.cpp -o Day7
+	g++ main.cpp -o Day7 -g -fsanitize=address
 
 test: all
 	./Day7 example.txt
