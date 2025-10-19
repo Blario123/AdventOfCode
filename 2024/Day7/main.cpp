@@ -1,17 +1,34 @@
 #include <cstdio>
-#include <iostream>
 #include <fstream>
-#include <stdexcept>
 #include <string>
 #include <vector>
 #include <cmath>
+#include <cstdint>
 
-int checkLine(int goal, const std::vector<long> &v) {
+std::vector<unsigned long long> split(std::string str) {
+    std::vector<unsigned long long> retVec;
+    std::string s;
+    for(int i = 0; i < str.size(); i++) {
+        char j = str[i];
+        if(j == ' ' || j == '\0') {
+            retVec.emplace_back(std::stoull(s));
+            s = "";
+        } else {
+            s.push_back(j);
+        }
+    }
+    if(!s.empty()) {
+        retVec.emplace_back(std::stoull(s));
+    }
+    return retVec;
+}
+
+uint64_t checkLine(unsigned long long goal, const std::vector<unsigned long long> &v) {
     int possPermutations = std::pow(2, v.size() - 1);
     // Cheaper to check the addition and multiplication permutations immediately.
-    int addSum = v[0];
-    int mulSum = v[0];
-    for(int i = 1; i < v.size(); i++) {
+    unsigned long long addSum = v[0];
+    unsigned long long mulSum = v[0];
+    for(size_t i = 1; i < v.size(); i++) {
         addSum += v[i];
         mulSum *= v[i];
     }
@@ -21,7 +38,7 @@ int checkLine(int goal, const std::vector<long> &v) {
     // If neither worked, determine a mix of symbols
     int tried = 1;
     while(tried != possPermutations - 1) {
-        int mixSum = v[0];
+        unsigned long long mixSum = v[0];
         // 0b0 == +
         // 0b1 == *
         int mask = 0b1;
@@ -43,6 +60,85 @@ int checkLine(int goal, const std::vector<long> &v) {
     return -1; 
 }
 
+std::vector<std::vector<std::string>> cartesianProduct(std::vector<std::string> p, size_t len) {
+    std::vector<std::vector<std::string>> temp = {{}};
+    for(int i = 0; i < len; i++) {
+        std::vector<std::vector<std::string>> newTemp;
+        for(const std::vector<std::string>& product: temp) {
+            for(const std::string& element: p) {
+                std::vector<std::string> tempCopy = product;
+                tempCopy.push_back(element);
+                newTemp.push_back(tempCopy);
+            }
+        }
+        temp = newTemp;
+    }
+    return temp;
+}
+
+std::string vecToString(std::vector<std::string> s) {
+    std::string i;
+    for(auto &j: s) {
+        i.append(j);
+    }
+    return i;
+}
+
+uint64_t checkLineConcat(unsigned long long goal, const std::vector<unsigned long long> &v) {
+    // printf("Goal = %llu\n", goal);
+    int possPermutations = std::pow(3, v.size() - 1);
+    // Cheaper to check the addition and multiplication permutations immediately.
+    unsigned long long addSum = v[0];
+    unsigned long long mulSum = v[0];
+    unsigned long long concatSum = v[0];
+    for(size_t i = 1; i < v.size(); i++) {
+        addSum += v[i];
+        mulSum *= v[i];
+        concatSum *= pow(10, std::to_string(v[i]).length());
+        concatSum += v[i];
+    }
+    if(addSum == goal || mulSum == goal || concatSum == goal) {
+        // printf("addSum = %llu, mulSum = %llu, concatSum = %llu\n", addSum, mulSum, concatSum);
+        return goal;
+    }
+    // If neither worked, determine a mix of symbols
+    std::vector<std::string> p = {"*", "+", "||"};
+
+
+    const auto& ret = cartesianProduct(p, v.size() - 1);
+    for(int i = 0; i < ret.size(); i++) {
+        std::string opString = vecToString(ret[i]);
+        // printf("Goal is %llu using %s\n", goal, opString.c_str());
+        unsigned long long mixSum = v[0];
+        for(int k = 0; k < ret[i].size(); k++) {
+            std::string j = ret[i][k];
+            int l = k + 1;
+            if(j == "*") {
+                // printf("%llu * %llu\n", mixSum, v[l]);
+                mixSum *= v[l];
+            } else if(j == "+") {
+                // printf("%llu + %llu\n", mixSum, v[l]);
+                mixSum += v[l];
+            } else if(j == "||") {
+                // printf("%llu || %llu\t", mixSum, v[l]);
+                size_t shiftAmount = pow(10,std::to_string(v[l]).length());
+                // printf("shifting by %lu\n", shiftAmount);
+                // printf("mixSum = %llu", mixSum);
+                mixSum *= shiftAmount;
+                // printf("shifted = %llu", mixSum);
+                mixSum += v[l];
+                // printf("added = %llu\n", mixSum); 
+            }
+            // printf("sum now = %llu\n", mixSum);
+        }
+        if(mixSum == goal) {
+            // printf("mixSum = %llu\n", mixSum);
+            return goal;
+        }
+    }
+    return -1; 
+}
+
 int main(int argc, char** argv) {
     if(argc > 1) {
         // Data input
@@ -51,34 +147,26 @@ int main(int argc, char** argv) {
 
         std::string line;
         getline(input, line, '\n');
-        int sum = 0;
-        // Day 1 - (built in to processing) Check sum of line (+/*)
-        size_t sz = 0;
+        uint64_t sum1 = 0;
+        uint64_t sum2 = 0;
+        uint64_t sz = 0;
         while(input.good()) {
             sz = line.find(':');
-            int g = std::stoi(line.substr(0, sz++).c_str());
+            long long g = std::stoll(line.substr(0, sz++).c_str());
             size_t sz_ = sz + 1;
-            std::vector<long> v;
-            while(sz != std::string::npos) {
-                printf("%s\n", line.substr(sz_, std::string::npos).c_str());
-                sz = line.find(' ', sz_);
-                if(sz == std::string::npos) {
-                    printf("end of line found\n");
-                }
-                try {
-                    v.emplace_back(std::stol(line.substr(sz_, sz).c_str()));
-                } catch(const std::out_of_range& err) {
-                    std::cerr << "out of range: " << err.what();
-                }
-                sz_ = sz + 1;
+            const auto& v = split(line.substr(sz_, std::string::npos));
+            uint64_t l1 = checkLine(g, v);
+            uint64_t l2 = checkLineConcat(g, v);
+            if(l1 != -1) {
+                sum1 += l1; 
             }
-            int l = checkLine(g, v);
-            if(l != -1) {
-                sum += l; 
+            if(l2 != -1) {
+                sum2 += l2;
             }
             getline(input, line, '\n');
         }
-        printf("Count of working lines = %d\n", sum);
+        printf("Count of working lines = %lu\n", sum1);
+        printf("Count of new working lines = %lu\n", sum2);
     }
     return 0;
 }
