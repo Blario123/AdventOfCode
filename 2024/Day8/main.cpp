@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
             createAntinodes(&channels[i]);
             createContinuousAntinodes(&channelsCopy[i]);
         }
-        printAntinodes(channelsCopy);
+        // printAntinodes(channelsCopy);
         printf("Total number of antinodes = %d\n", calculateTotalAnodes(&channels));
         printf("Total number of continuous antinodes = %d\n", calculateTotalAnodes(&channelsCopy));
     }
