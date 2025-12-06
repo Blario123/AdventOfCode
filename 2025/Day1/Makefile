@@ -1,5 +1,8 @@
+CC=gcc
+CFLAGS=-g -Wall -Werror -Wpedantic -fsanitize=address
+
 build:
-	gcc -o Day1 main.c
+	$(CC) -o Day1 main.c $(CFLAGS)
 
 run: build
 	./Day1 input.txt

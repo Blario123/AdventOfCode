@@ -3,12 +3,27 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+int count_passes(int pos, int prev) {
+	int a = 0;
+	while(prev != pos) {
+		if(pos < prev) {
+			prev--;
+		}
+		if(pos > prev) {
+			prev++;
+		}
+		if((prev % 100) == 0) {
+			a++;
+		}
+	}
+	return a;
+}
+
 int main(int argc, char** argv) {
     if(argc > 1) {
         int sum = 0;
-        int sum_point = 0;
+        int sum_pass = 0;
         int dial = 50;
-        int dial_old = 50;
         const char* filename = argv[1];
         FILE *p_file = fopen(filename, "r");
         size_t len = 255;
@@ -25,37 +40,21 @@ int main(int argc, char** argv) {
                 default:
                     printf("Unknown option\n");
             }
-            dial_old = dial;
+			int dial_old = dial;
             dial += s;
+			sum_pass += count_passes(dial, dial_old);
             // Normalise the number to 0-100
-            bool performed = false;
             if(dial < 0) {
                 dial = 100 + dial;
-                printf("passed 0\n");
-                if(dial_old != 0) {
-                    sum_point++;
-                }
-                performed = true;
             }
-            if(dial > 99) {
-                printf("passed 0\n");
-                dial = dial % 100;
-                if(dial_old != 0) {
-                    sum_point++;
-                }
-                performed = true;
-            }
+			dial %= 100;
             if(dial == 0) {
                 sum++;
-                if(!performed) {
-                    sum_point++;
-                }
             }
-            printf("Moving %d, dial is now %d\n", s, dial);
         }
         fclose(p_file);
         printf("Password = %d\n", sum);
-        printf("Password including points = %d\n", sum_point);
+        printf("Password = %d\n", sum_pass);
     } else {
         printf("input filename required.\n");
     }
