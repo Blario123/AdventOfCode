@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// 70187097360 -- HIGH
+
 typedef struct {
     unsigned long long normal;
     unsigned long long complex;
@@ -81,11 +83,14 @@ bool isRepeatComplex(unsigned long long pal) {
                 repeats = true;
                 for(int j = 1; j < (strlen(str) / i); j++) {
                     char ssstr[i + 1];
-                    substr(ssstr, str + (i * j), strstr(str + (i * j), sstr), i + 1);
+                    substr(ssstr, str + (i * j), str + (i * (j + 1)), i + 1);
                     printf("comparing %s with %s\n", sstr, ssstr);
-                    if(strcmp(sstr, str + (i * j)) != 0) {
+                    if(strcmp(sstr, ssstr) != 0) {
                         repeats = false;
                     }
+                }
+                if(repeats) {
+                    printf("NUMBER REPEATS\n");
                 }
                 return repeats;
             }
@@ -103,6 +108,26 @@ bool isRepeatComplex(unsigned long long pal) {
     // Add the halfway point to the pointer to start the second half without copying
     if(strcmp(str_half, str + (strlen(str) / 2)) == 0) {
         return true;
+    }
+    bool repeats = true;
+    for(int i = 2; i < (strlen(str) / 2); i++) {
+        if((strlen(str) % i) == 0) {
+            char sstr[i + 1];
+            substr(sstr, str, str + i, i + 1);
+            repeats = true;
+            for(int j = 1; j < (strlen(str) / i); j++) {
+                char ssstr[i + 1];
+                substr(ssstr, str + (i * j), str + (i * (j + 1)), i + 1);
+                printf("comparing %s with %s\n", sstr, ssstr);
+                if(strcmp(sstr, ssstr) != 0) {
+                    repeats = false;
+                }
+            }
+            if(repeats) {
+                printf("NUMBER REPEATS\n");
+            }
+            return repeats;
+        }
     }
     return false;
 }
